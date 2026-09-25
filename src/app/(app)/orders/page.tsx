@@ -36,6 +36,13 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     customers: Array.isArray(order.customers) ? order.customers[0] ?? null : order.customers,
   }))
 
+  const activeFilters = new URLSearchParams()
+  if (q) activeFilters.set('q', q)
+  if (selectedStatus) activeFilters.set('status', selectedStatus)
+  if (receivedFrom) activeFilters.set('receivedFrom', receivedFrom)
+  if (receivedTo) activeFilters.set('receivedTo', receivedTo)
+  const filterQuery = activeFilters.toString()
+
   return (
     <section className="page-section">
       <div className="page-heading"><div><p className="eyebrow">Operación diaria</p><h1>Órdenes de reparación</h1></div><Link className="button" href="/orders/new">Nueva orden</Link></div>
@@ -46,7 +53,13 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
         <label>Hasta<input name="receivedTo" type="date" defaultValue={receivedTo} /></label>
         <button type="submit">Filtrar</button>
       </form>
+      <div className="filter-actions">
+        <a className="button secondary" href={filterQuery ? `/orders/export?${filterQuery}` : '/orders/export'}>Descargar CSV</a>
+        {filterQuery ? <Link href="/orders">Limpiar filtros</Link> : null}
+        <span className="muted">{tableOrders.length} órdenes</span>
+      </div>
       <OrderTable orders={tableOrders} />
     </section>
   )
 }
+

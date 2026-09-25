@@ -1,3 +1,4 @@
+import { SubmitButton } from '@/components/submit-button'
 import { orderStatuses, type OrderStatus } from '@/lib/orders'
 
 type OrderFormValues = {
@@ -19,9 +20,10 @@ type OrderFormProps = {
   values?: OrderFormValues
   error?: string
   submitLabel: string
+  confirmed?: boolean
 }
 
-export function OrderForm({ action, values = {}, error, submitLabel }: OrderFormProps) {
+export function OrderForm({ action, values = {}, error, submitLabel, confirmed }: OrderFormProps) {
   return (
     <form action={action} className="order-form">
       {error ? <p className="form-error" role="alert">{error}</p> : null}
@@ -52,7 +54,8 @@ export function OrderForm({ action, values = {}, error, submitLabel }: OrderForm
         <label>Fecha de ingreso<input name="receivedOn" type="date" defaultValue={values.receivedOn} /></label>
         <label>Fecha de retiro<input name="pickedUpOn" type="date" defaultValue={values.pickedUpOn} /></label>
       </fieldset>
-      <button type="submit">{submitLabel}</button>
+      <SubmitButton label={submitLabel} pendingLabel="Guardando…" successLabel="Guardado ✓" confirmed={confirmed} />
     </form>
   )
 }
+

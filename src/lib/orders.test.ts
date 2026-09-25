@@ -89,3 +89,25 @@ describe('budget validation', () => {
     expect(parseOrderInput({ customerName: 'Ana', equipment: 'TV', budget: '1.234,567' }).success).toBe(false)
   })
 })
+
+
+describe('received date range boundaries', () => {
+  const order = {
+    orderNumber: 1,
+    equipment: 'Lavarropas Drean',
+    status: 'received' as const,
+    receivedOn: '2026-03-15',
+  }
+
+  it('includes the orders received exactly on each edge', () => {
+    expect(matchesOrderFilters(order, { receivedFrom: '2026-03-15', receivedTo: '2026-03-15' })).toBe(true)
+  })
+
+  it('accepts a range that is open on one side', () => {
+    expect(matchesOrderFilters(order, { receivedFrom: '2026-03-01' })).toBe(true)
+    expect(matchesOrderFilters(order, { receivedTo: '2026-03-31' })).toBe(true)
+    expect(matchesOrderFilters(order, { receivedFrom: '2026-03-16' })).toBe(false)
+    expect(matchesOrderFilters(order, { receivedTo: '2026-03-14' })).toBe(false)
+  })
+})
+

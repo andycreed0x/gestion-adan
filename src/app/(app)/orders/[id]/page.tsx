@@ -2,17 +2,21 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { AttachmentForm } from '@/components/attachment-form'
+import { AttachmentList } from '@/components/attachment-list'
 import { OrderForm } from '@/components/order-form'
-import { buildAttachmentDownloadLinks } from '@/lib/attachments'
+import { buildAttachmentLinks } from '@/lib/attachments'
 import { formatCurrency, type OrderStatus } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { updateOrderAction } from '../actions'
 import { uploadAttachmentAction } from './attachment-actions'
 
-type OrderPageProps = { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }
+type OrderPageProps = {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string; saved?: string; attached?: string }>
+}
 
 export default async function OrderPage({ params, searchParams }: OrderPageProps) {
-  const [{ id }, { error }] = await Promise.all([params, searchParams])
+  const [{ id }, { error, saved, attached }] = await Promise.all([params, searchParams])
   const supabase = await createServerSupabaseClient()
   const { data: order, error: queryError } = await supabase
     .from('repair_orders')
@@ -30,10 +34,10 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
     .select('id, storage_path, file_name, mime_type, size_bytes, created_at')
     .eq('repair_order_id', id)
     .order('created_at', { ascending: false })
-  const attachmentLinks = await buildAttachmentDownloadLinks(attachments ?? [], async (storagePath) => {
+  const attachmentLinks = await buildAttachmentLinks(attachments ?? [], async (storagePath, downloadName) => {
     const { data } = await supabase.storage
       .from('order-attachments')
-      .createSignedUrl(storagePath, 3600)
+      .createSignedUrl(storagePath, 3600, downloadName ? { download: downloadName } : undefined)
     return data?.signedUrl ?? null
   })
   const budget = order.budget_cents === null ? '' : (order.budget_cents / 100).toFixed(2).replace('.', ',')
@@ -41,7 +45,7 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
   return (
     <section className="page-section">
       <div className="page-heading"><div><Link href="/orders">← Órdenes</Link><h1>Orden #{order.order_number}</h1><p className="muted">{formatCurrency(order.budget_cents)}</p></div><Link className="button secondary" href={`/orders/${id}/print`}>Imprimir ticket</Link></div>
-      <OrderForm action={action} error={error} submitLabel="Guardar cambios" values={{
+      <OrderForm action={action} error={error} submitLabel="Guardar cambios" confirmed={saved === '1'} values={{
         customerName: customer?.full_name,
         customerAddress: customer?.address,
         customerPhone: customer?.phone,
@@ -54,7 +58,12 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
         receivedOn: order.received_on,
         pickedUpOn: order.picked_up_on ?? undefined,
       }} />
-      <section className="attachments"><h2>Adjuntos</h2><AttachmentForm action={attachmentAction} />{attachmentLinks.length ? <ul>{attachmentLinks.map((attachment) => <li key={attachment.id}>{attachment.downloadUrl ? <a href={attachment.downloadUrl} target="_blank" rel="noreferrer">Descargar {attachment.file_name}</a> : attachment.file_name} · {attachment.mime_type} · {attachment.size_bytes} bytes</li>)}</ul> : <p className="muted">Todavía no hay archivos adjuntos.</p>}</section>
+      <section className="attachments">
+        <h2>Adjuntos</h2>
+        <AttachmentForm action={attachmentAction} confirmed={attached === '1'} />
+        <AttachmentList attachments={attachmentLinks} />
+      </section>
     </section>
   )
 }
+

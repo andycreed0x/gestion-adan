@@ -7,12 +7,29 @@ export type RepairOrderAttachment = {
   created_at: string
 }
 
-export async function buildAttachmentDownloadLinks(
-  attachments: RepairOrderAttachment[],
-  createSignedUrl: (storagePath: string) => Promise<string | null>,
-): Promise<Array<RepairOrderAttachment & { downloadUrl: string | null }>> {
-  return Promise.all(attachments.map(async (attachment) => ({
-    ...attachment,
-    downloadUrl: await createSignedUrl(attachment.storage_path),
-  })))
+export type AttachmentLink = RepairOrderAttachment & {
+  viewUrl: string | null
+  downloadUrl: string | null
 }
+
+const viewableMimeTypes = new Set(['image/jpeg', 'image/png'])
+
+export function isViewableImage(mimeType: string): boolean {
+  return viewableMimeTypes.has(mimeType)
+}
+
+export async function buildAttachmentLinks(
+  attachments: RepairOrderAttachment[],
+  createSignedUrl: (storagePath: string, downloadName?: string) => Promise<string | null>,
+): Promise<AttachmentLink[]> {
+  return Promise.all(attachments.map(async (attachment) => {
+    const [viewUrl, downloadUrl] = await Promise.all([
+      isViewableImage(attachment.mime_type)
+        ? createSignedUrl(attachment.storage_path)
+        : Promise.resolve(null),
+      createSignedUrl(attachment.storage_path, attachment.file_name),
+    ])
+    return { ...attachment, viewUrl, downloadUrl }
+  }))
+}
+

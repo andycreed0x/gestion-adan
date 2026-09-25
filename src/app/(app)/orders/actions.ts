@@ -79,7 +79,7 @@ export async function createOrderAction(formData: FormData) {
   if (error) redirect(`/orders/new?error=${encodeURIComponent(error.message)}`)
 
   revalidatePath('/orders')
-  redirect(`/orders/${data.id}`)
+  redirect(`/orders/${data.id}?saved=1`)
 }
 
 export async function updateOrderAction(orderId: string, formData: FormData) {
@@ -106,5 +106,5 @@ export async function updateOrderAction(orderId: string, formData: FormData) {
 
   revalidatePath('/orders')
   revalidatePath(`/orders/${orderId}`)
-  redirect(`/orders/${orderId}`)
+  redirect(`/orders/${orderId}?saved=1`)
 }

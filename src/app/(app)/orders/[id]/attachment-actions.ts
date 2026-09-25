@@ -44,4 +44,5 @@ export async function uploadAttachmentAction(orderId: string, formData: FormData
   }
 
   revalidatePath(`/orders/${orderId}`)
+  redirect(`/orders/${orderId}?attached=1`)
 }
