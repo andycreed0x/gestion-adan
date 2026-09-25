@@ -31,3 +31,22 @@ npm run dev
 | `INITIAL_ADMIN_PASSWORD` | Contraseña inicial | Sólo bootstrap |
 
 Nunca se deben commitear archivos `.env*` con valores reales.
+
+## Base de datos
+
+Las migraciones viven en `supabase/migrations/`. Para aplicar y verificar la base administrativamente se usa una URL de PostgreSQL sólo en la terminal:
+
+```bash
+export SUPABASE_DB_URL='postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require'
+node scripts/apply-migration.mjs
+node scripts/verify-schema.mjs
+```
+
+La aplicación crea órdenes a partir de la secuencia de base de datos que inicia en `9380`. No calcula el siguiente número en el navegador.
+
+## Supabase CLI
+
+```bash
+npx supabase@2.117.0 migration list --db-url "$SUPABASE_DB_URL"
+npx supabase@2.117.0 db advisors --db-url "$SUPABASE_DB_URL" --type all
+```
