@@ -32,4 +32,3 @@ export async function buildAttachmentLinks(
     return { ...attachment, viewUrl, downloadUrl }
   }))
 }
-

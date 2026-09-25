@@ -110,4 +110,3 @@ describe('received date range boundaries', () => {
     expect(matchesOrderFilters(order, { receivedTo: '2026-03-14' })).toBe(false)
   })
 })
-

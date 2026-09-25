@@ -58,4 +58,3 @@ export function OrderForm({ action, values = {}, error, submitLabel, confirmed }
     </form>
   )
 }
-

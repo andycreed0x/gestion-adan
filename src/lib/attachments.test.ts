@@ -51,4 +51,3 @@ describe('buildAttachmentLinks', () => {
     expect(isViewableImage('application/pdf')).toBe(false)
   })
 })
-

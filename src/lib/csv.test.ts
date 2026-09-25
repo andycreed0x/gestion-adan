@@ -67,4 +67,3 @@ describe('buildOrdersCsvFilename', () => {
     expect(buildOrdersCsvFilename({}, '2026-09-25')).toBe('ordenes-2026-09-25.csv')
   })
 })
-

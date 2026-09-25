@@ -15,4 +15,3 @@ export function AttachmentForm({ action, confirmed }: AttachmentFormProps) {
     </form>
   )
 }
-
