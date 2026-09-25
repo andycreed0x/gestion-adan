@@ -63,10 +63,21 @@ function parseBudgetCents(raw: string): number | null {
   if (decimalSeparator) {
     const [integerPart, ...fractionParts] = value.split(decimalSeparator)
     const fraction = fractionParts.join(decimalSeparator)
-    if (fraction.length > 2 || !/^\d+$/.test(fraction)) {
-      throw new Error('El presupuesto admite como máximo dos decimales')
+    if (!/^\d+$/.test(fraction)) {
+      throw new Error('El presupuesto debe ser numérico')
     }
-    normalized = `${integerPart.replace(/[.,]/g, '')}.${fraction}`
+    if (fraction.length > 2) {
+      const hasMixedSeparators = comma >= 0 && dot >= 0
+      const groupingOnly = decimalSeparator === '.'
+        ? /^\d{1,3}(?:\.\d{3})+$/
+        : /^\d{1,3}(?:,\d{3})+$/
+      if (hasMixedSeparators || !groupingOnly.test(value)) {
+        throw new Error('El presupuesto admite como máximo dos decimales')
+      }
+      normalized = value.replace(/[.,]/g, '')
+    } else {
+      normalized = `${integerPart.replace(/[.,]/g, '')}.${fraction}`
+    }
   }
 
   if (!/^-?\d+(?:\.\d{1,2})?$/.test(normalized)) {
@@ -121,6 +132,38 @@ export function parseOrderInput(input: unknown): OrderParseResult {
       },
     }
   }
+}
+
+export type OrderListFilter = {
+  query?: string
+  status?: OrderStatus | ''
+  receivedFrom?: string
+  receivedTo?: string
+}
+
+export type OrderListItem = {
+  orderNumber: number
+  equipment: string
+  customerName?: string | null
+  customerPhone?: string | null
+  status: OrderStatus
+  receivedOn: string
+}
+
+export function matchesOrderFilters(order: OrderListItem, filters: OrderListFilter): boolean {
+  const needle = filters.query?.trim().toLocaleLowerCase('es-AR') ?? ''
+  if (needle && ![
+    order.orderNumber,
+    order.equipment,
+    order.customerName,
+    order.customerPhone,
+  ].filter(Boolean).some((value) => String(value).toLocaleLowerCase('es-AR').includes(needle))) {
+    return false
+  }
+  if (filters.status && order.status !== filters.status) return false
+  if (filters.receivedFrom && order.receivedOn < filters.receivedFrom) return false
+  if (filters.receivedTo && order.receivedOn > filters.receivedTo) return false
+  return true
 }
 
 export function formatCurrency(cents: number | null): string {

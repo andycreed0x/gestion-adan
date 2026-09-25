@@ -1,12 +1,16 @@
 import Link from 'next/link'
 
 import { OrderTable } from '@/components/order-table'
+import { matchesOrderFilters, orderStatuses, type OrderStatus } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-type OrdersPageProps = { searchParams: Promise<{ q?: string }> }
+type OrdersPageProps = {
+  searchParams: Promise<{ q?: string; status?: string; receivedFrom?: string; receivedTo?: string }>
+}
 
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
-  const { q = '' } = await searchParams
+  const { q = '', status = '', receivedFrom = '', receivedTo = '' } = await searchParams
+  const selectedStatus = orderStatuses.includes(status as OrderStatus) ? status as OrderStatus : ''
   const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('repair_orders')
@@ -15,13 +19,16 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     .limit(250)
   if (error) throw new Error(error.message)
 
-  const needle = q.trim().toLocaleLowerCase('es-AR')
   const orders = (data ?? []).filter((order) => {
-    if (!needle) return true
     const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers
-    return [order.order_number, order.equipment, customer?.full_name, customer?.phone]
-      .filter(Boolean)
-      .some((value) => String(value).toLocaleLowerCase('es-AR').includes(needle))
+    return matchesOrderFilters({
+      orderNumber: order.order_number,
+      equipment: order.equipment,
+      customerName: customer?.full_name,
+      customerPhone: customer?.phone,
+      status: order.status as OrderStatus,
+      receivedOn: order.received_on,
+    }, { query: q, status: selectedStatus, receivedFrom, receivedTo })
   })
 
   const tableOrders = orders.map((order) => ({
@@ -32,7 +39,13 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
   return (
     <section className="page-section">
       <div className="page-heading"><div><p className="eyebrow">Operación diaria</p><h1>Órdenes de reparación</h1></div><Link className="button" href="/orders/new">Nueva orden</Link></div>
-      <form className="search-form"><input name="q" defaultValue={q} placeholder="Buscar por número, cliente, teléfono o equipo" /><button type="submit">Buscar</button></form>
+      <form className="search-form">
+        <input name="q" defaultValue={q} placeholder="Buscar por número, cliente, teléfono o equipo" />
+        <select name="status" defaultValue={selectedStatus}><option value="">Todos los estados</option>{orderStatuses.map((option) => <option key={option} value={option}>{option}</option>)}</select>
+        <label>Desde<input name="receivedFrom" type="date" defaultValue={receivedFrom} /></label>
+        <label>Hasta<input name="receivedTo" type="date" defaultValue={receivedTo} /></label>
+        <button type="submit">Filtrar</button>
+      </form>
       <OrderTable orders={tableOrders} />
     </section>
   )

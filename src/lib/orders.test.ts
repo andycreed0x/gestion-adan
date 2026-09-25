@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatCurrency,
   makeAttachmentPath,
+  matchesOrderFilters,
   parseOrderInput,
 } from './orders'
 
@@ -41,4 +42,50 @@ it('rejects picked_up status without a pickup date', () => {
   })
 
   expect(result.success).toBe(false)
+})
+
+it('accepts an Argentine thousands separator without treating it as decimals', () => {
+  const result = parseOrderInput({
+    customerName: 'Ana',
+    equipment: 'TV',
+    budget: '12.500',
+  })
+
+  expect(result.success).toBe(true)
+  if (result.success) expect(result.data.budgetCents).toBe(1_250_000)
+})
+
+
+describe('order listing filters', () => {
+  const order = {
+    orderNumber: 9380,
+    equipment: 'Smart TV Samsung',
+    customerName: 'Ana Pérez',
+    customerPhone: '1144445555',
+    status: 'ready' as const,
+    receivedOn: '2026-09-10',
+  }
+
+  it('matches status, date range, and case-insensitive text together', () => {
+    expect(matchesOrderFilters(order, {
+      query: 'ana',
+      status: 'ready',
+      receivedFrom: '2026-09-01',
+      receivedTo: '2026-09-25',
+    })).toBe(true)
+  })
+
+  it('rejects an order outside the requested filters', () => {
+    expect(matchesOrderFilters(order, { status: 'received' })).toBe(false)
+    expect(matchesOrderFilters(order, { receivedFrom: '2026-09-11' })).toBe(false)
+    expect(matchesOrderFilters(order, { query: 'lavarropas' })).toBe(false)
+  })
+})
+
+describe('budget validation', () => {
+  it('rejects negative, non-numeric, and three-decimal budgets', () => {
+    expect(parseOrderInput({ customerName: 'Ana', equipment: 'TV', budget: '-1' }).success).toBe(false)
+    expect(parseOrderInput({ customerName: 'Ana', equipment: 'TV', budget: 'doce mil' }).success).toBe(false)
+    expect(parseOrderInput({ customerName: 'Ana', equipment: 'TV', budget: '1.234,567' }).success).toBe(false)
+  })
 })

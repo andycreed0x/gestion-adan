@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 
 import { AttachmentForm } from '@/components/attachment-form'
 import { OrderForm } from '@/components/order-form'
+import { buildAttachmentDownloadLinks } from '@/lib/attachments'
 import { formatCurrency, type OrderStatus } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { updateOrderAction } from '../actions'
@@ -26,9 +27,15 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
   const attachmentAction = uploadAttachmentAction.bind(null, id)
   const { data: attachments } = await supabase
     .from('repair_order_attachments')
-    .select('id, file_name, mime_type, size_bytes, created_at')
+    .select('id, storage_path, file_name, mime_type, size_bytes, created_at')
     .eq('repair_order_id', id)
     .order('created_at', { ascending: false })
+  const attachmentLinks = await buildAttachmentDownloadLinks(attachments ?? [], async (storagePath) => {
+    const { data } = await supabase.storage
+      .from('order-attachments')
+      .createSignedUrl(storagePath, 3600)
+    return data?.signedUrl ?? null
+  })
   const budget = order.budget_cents === null ? '' : (order.budget_cents / 100).toFixed(2).replace('.', ',')
 
   return (
@@ -47,7 +54,7 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
         receivedOn: order.received_on,
         pickedUpOn: order.picked_up_on ?? undefined,
       }} />
-      <section className="attachments"><h2>Adjuntos</h2><AttachmentForm action={attachmentAction} />{attachments?.length ? <ul>{attachments.map((attachment) => <li key={attachment.id}>{attachment.file_name} · {attachment.mime_type} · {attachment.size_bytes} bytes</li>)}</ul> : <p className="muted">Todavía no hay archivos adjuntos.</p>}</section>
+      <section className="attachments"><h2>Adjuntos</h2><AttachmentForm action={attachmentAction} />{attachmentLinks.length ? <ul>{attachmentLinks.map((attachment) => <li key={attachment.id}>{attachment.downloadUrl ? <a href={attachment.downloadUrl} target="_blank" rel="noreferrer">Descargar {attachment.file_name}</a> : attachment.file_name} · {attachment.mime_type} · {attachment.size_bytes} bytes</li>)}</ul> : <p className="muted">Todavía no hay archivos adjuntos.</p>}</section>
     </section>
   )
 }
