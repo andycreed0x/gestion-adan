@@ -1,0 +1,23 @@
+# Dependencies and builds
+node_modules/
+.next/
+out/
+coverage/
+
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Agent and harness state
+.agents/
+.atl/
+.claude/
+.pi/
+skills-lock.json
+.superpowers/
+.worktrees/
+
+# OS and editor files
+.DS_Store
+*.log
