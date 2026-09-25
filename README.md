@@ -50,3 +50,17 @@ La aplicación crea órdenes a partir de la secuencia de base de datos que inici
 npx supabase@2.117.0 migration list --db-url "$SUPABASE_DB_URL"
 npx supabase@2.117.0 db advisors --db-url "$SUPABASE_DB_URL" --type all
 ```
+
+## Importación histórica
+
+El importador revisa el archivo del programa anterior y genera JSON sin insertar datos automáticamente:
+
+```bash
+node scripts/import-legacy-orders.mjs /ruta/ordenes_servicio.txt
+```
+
+Las filas inválidas quedan en `rejected`; revisalas antes de convertir el resultado en una carga real.
+
+## Cron de órdenes vencidas
+
+`vercel.json` agenda una consulta de lunes a viernes a las 20:30 UTC. La ruta requiere `Authorization: Bearer $CRON_SECRET` y devuelve el conteo de órdenes abiertas con más de 90 días.
