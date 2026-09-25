@@ -32,3 +32,13 @@ describe('repair order domain', () => {
     expect(formatCurrency(1250)).toContain('12,50')
   })
 })
+
+it('rejects picked_up status without a pickup date', () => {
+  const result = parseOrderInput({
+    customerName: 'Ana',
+    equipment: 'TV',
+    status: 'picked_up',
+  })
+
+  expect(result.success).toBe(false)
+})

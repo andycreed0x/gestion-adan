@@ -91,6 +91,12 @@ export function parseOrderInput(input: unknown): OrderParseResult {
 
   try {
     const pickedUpOn = parsed.data.pickedUpOn || null
+    if (parsed.data.status === 'picked_up' && !pickedUpOn) {
+      return {
+        success: false,
+        error: { issues: ['La fecha de retiro es obligatoria para una orden retirada'] },
+      }
+    }
     return {
       success: true,
       data: {
