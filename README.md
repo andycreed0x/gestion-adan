@@ -64,3 +64,32 @@ Las filas inválidas quedan en `rejected`; revisalas antes de convertir el resul
 ## Cron de órdenes vencidas
 
 `vercel.json` agenda una consulta de lunes a viernes a las 20:30 UTC. La ruta requiere `Authorization: Bearer $CRON_SECRET` y devuelve el conteo de órdenes abiertas con más de 90 días.
+
+## Deploy en Vercel
+
+Crear y vincular el proyecto desde la carpeta de la aplicación:
+
+```bash
+vercel project add gestion-adan
+vercel link --yes --project gestion-adan
+```
+
+Configurar en Production las variables de la tabla anterior. Las dos variables `NEXT_PUBLIC_*` se pueden exponer al navegador; `SUPABASE_SECRET_KEY` y `CRON_SECRET` deben cargarse como secretos de Vercel.
+
+```bash
+vercel --prod --yes
+```
+
+## Usuario inicial
+
+Para crear el primer usuario administrativo, ejecutar una vez con secretos únicamente en la terminal:
+
+```bash
+INITIAL_ADMIN_EMAIL='admin@gestion-adan.local' \
+INITIAL_ADMIN_PASSWORD='cambiar-por-una-contraseña-segura' \
+NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+SUPABASE_SECRET_KEY="$SUPABASE_SECRET_KEY" \
+node scripts/seed-admin.mjs
+```
+
+Cambiá la contraseña inicial tras el primer acceso.
