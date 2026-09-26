@@ -110,3 +110,31 @@ describe('received date range boundaries', () => {
     expect(matchesOrderFilters(order, { receivedTo: '2026-03-14' })).toBe(false)
   })
 })
+
+describe('order draft validation', () => {
+  it('returns field errors without discarding the typed draft', async () => {
+    const { validateOrderDraft } = await import('./orders')
+    const draft = {
+      customerName: 'Ana',
+      customerPhone: '123',
+      equipment: 'TV',
+      budget: 'doce mil',
+      status: 'picked_up' as const,
+      pickedUpOn: '',
+    }
+
+    const result = validateOrderDraft(draft)
+
+    expect(result.values).toMatchObject(draft)
+    expect(result.fieldErrors.customerPhone).toBe('Ingresá un teléfono argentino válido')
+    expect(result.fieldErrors.budget).toBe('El presupuesto debe ser numérico')
+    expect(result.fieldErrors.pickedUpOn).toBe('La fecha de retiro es obligatoria para una orden retirada')
+  })
+})
+
+it('allows a blank received date and supplies today during parsing', () => {
+  const result = parseOrderInput({ customerName: 'Ana', equipment: 'TV', receivedOn: '' })
+
+  expect(result.success).toBe(true)
+  if (result.success) expect(result.data.receivedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+})
