@@ -3,6 +3,8 @@ node_modules/
 .next/
 out/
 coverage/
+.venv/
+.pytest_cache/
 
 # Local credentials
 .env
@@ -29,3 +31,6 @@ skills-lock.json
 
 # Local operator credentials; never commit.
 secrets/
+
+__pycache__/
+*.py[cod]
