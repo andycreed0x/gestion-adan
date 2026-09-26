@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from gestion_desktop.legacy import parse_legacy_contents, write_sample_legacy_file
 from gestion_desktop.models import LegacyRecord, OrderInput
 from gestion_desktop.repository import SupabaseRepository
 
@@ -226,6 +227,19 @@ def test_import_upserts_legacy_numbers_and_reports_later_failure() -> None:
     assert summary.failed[0].line_number == 2
     assert retry_summary.imported == 1
     assert [row["order_number"] for row in client.rows["repair_orders"]] == [9380, 9381, 9383]
+
+
+def test_imports_the_generated_legacy_sample(tmp_path: Path) -> None:
+    sample_path = write_sample_legacy_file(tmp_path / "ordenes_servicio.txt")
+    parsed = parse_legacy_contents(sample_path.read_text(encoding="utf-8"))
+    client = FakeSupabaseClient()
+
+    summary = SupabaseRepository(client=client).import_legacy(parsed.accepted)
+
+    assert parsed.rejected == ()
+    assert summary.imported == 2
+    assert summary.failed == ()
+    assert [row["order_number"] for row in client.rows["repair_orders"]] == [9380, 9381]
 
 
 def test_write_backup_queries_orders_and_writes_legacy_text(tmp_path: Path) -> None:
