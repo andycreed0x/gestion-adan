@@ -54,6 +54,25 @@ try {
   )
   assert.equal(Number(sequence.rows[0]?.start_value), 9380, 'Order sequence must start at 9380')
 
+  const sequenceTrigger = await client.query(
+    `select exists (
+       select 1
+       from pg_trigger trigger
+       join pg_proc proc on proc.oid = trigger.tgfoid
+       join pg_namespace namespace on namespace.oid = proc.pronamespace
+       where trigger.tgrelid = 'public.repair_orders'::regclass
+         and not trigger.tgisinternal
+         and trigger.tgname = 'sync_repair_order_number_sequence'
+         and namespace.nspname = 'private'
+         and proc.proname = 'sync_repair_order_number_sequence'
+     ) as exists`,
+  )
+  assert.equal(
+    sequenceTrigger.rows[0]?.exists,
+    true,
+    'Missing repair order sequence safety trigger',
+  )
+
   const bucket = await client.query(
     "select public from storage.buckets where id = 'order-attachments'",
   )
