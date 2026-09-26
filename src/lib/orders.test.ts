@@ -131,3 +131,10 @@ describe('order draft validation', () => {
     expect(result.fieldErrors.pickedUpOn).toBe('La fecha de retiro es obligatoria para una orden retirada')
   })
 })
+
+it('allows a blank received date and supplies today during parsing', () => {
+  const result = parseOrderInput({ customerName: 'Ana', equipment: 'TV', receivedOn: '' })
+
+  expect(result.success).toBe(true)
+  if (result.success) expect(result.data.receivedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+})

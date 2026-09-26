@@ -45,7 +45,7 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
   return (
     <section className="page-section">
       <div className="page-heading"><div><Link href="/orders">← Órdenes</Link><h1>Orden #{order.order_number}</h1><p className="muted">{formatCurrency(order.budget_cents)}</p></div><Link className="button secondary" href={`/orders/${id}/print`}>Imprimir ticket</Link></div>
-      <OrderForm action={action} error={error} submitLabel="Guardar cambios" confirmed={saved === '1'} values={{
+      <OrderForm mode="update" action={action} error={error} submitLabel="Guardar cambios" confirmed={saved === '1'} values={{
         customerName: customer?.full_name,
         customerAddress: customer?.address,
         customerPhone: customer?.phone,

@@ -61,7 +61,7 @@ const rawOrderSchema = z.object({
   resolution: z.string().trim().optional().default(''),
   budget: z.string().trim().optional().default(''),
   status: z.enum(orderStatuses).optional().default('received'),
-  receivedOn: z.string().date().optional(),
+  receivedOn: z.string().date().optional().or(z.literal('')).default(''),
   pickedUpOn: z.string().date().optional().or(z.literal('')).default(''),
 })
 
@@ -164,7 +164,7 @@ export function validateOrderDraft(input: OrderDraft): OrderValidation {
         resolution: parsed.data.resolution,
         budgetCents,
         status: pickedUpOn ? 'picked_up' : parsed.data.status,
-        receivedOn: parsed.data.receivedOn ?? new Date().toISOString().slice(0, 10),
+        receivedOn: parsed.data.receivedOn || new Date().toISOString().slice(0, 10),
         pickedUpOn,
       },
     }
