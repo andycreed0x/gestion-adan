@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from gestion_desktop import repository as repository_module
 from gestion_desktop.legacy import parse_legacy_contents, write_sample_legacy_file
 from gestion_desktop.models import LegacyRecord, OrderInput
 from gestion_desktop.repository import SupabaseRepository
@@ -26,6 +27,7 @@ class FakeQuery:
         self.select_expression = ""
         self.limit_value: int | None = None
         self.order_column = ""
+        self.range_value: tuple[int, int] | None = None
 
     def select(self, expression: str) -> "FakeQuery":
         self.select_expression = expression
@@ -41,6 +43,11 @@ class FakeQuery:
 
     def order(self, column: str, **_: Any) -> "FakeQuery":
         self.order_column = column
+        return self
+
+    def range(self, start: int, end: int) -> "FakeQuery":
+        self.range_value = (start, end)
+        self.client.ranges.append(self.range_value)
         return self
 
     def insert(self, payload: dict[str, Any]) -> "FakeQuery":
@@ -83,6 +90,9 @@ class FakeQuery:
                 selected.sort(key=lambda row: row[self.order_column])
             if self.limit_value is not None:
                 selected = selected[: self.limit_value]
+            if self.range_value is not None:
+                start, end = self.range_value
+                selected = selected[start : end + 1]
             return Response(selected)
 
         assert self.payload is not None
@@ -149,6 +159,7 @@ class FakeSupabaseClient:
             ],
         }
         self.requests: list[tuple[str, str, dict[str, Any] | None, tuple[tuple[str, Any], ...]]] = []
+        self.ranges: list[tuple[int, int]] = []
         self.fail_order_numbers: set[int] = set()
 
     def table(self, table_name: str) -> FakeQuery:
@@ -186,6 +197,23 @@ def test_create_order_uses_database_number_and_existing_customer() -> None:
     assert "order_number" not in (insert[2] or {})
     assert created.order_number == 9381
     assert created.input.customer_name == "Ana"
+
+
+def test_list_orders_pages_through_all_online_rows(monkeypatch: Any) -> None:
+    client = FakeSupabaseClient()
+    client.rows["repair_orders"].append(
+        {
+            **client.rows["repair_orders"][0],
+            "id": "order-2",
+            "order_number": 9381,
+        }
+    )
+    monkeypatch.setattr(repository_module, "PAGE_SIZE", 1)
+
+    orders = SupabaseRepository(client=client).list_orders()
+
+    assert [order.order_number for order in orders] == [9380, 9381]
+    assert client.ranges == [(0, 0), (1, 1), (2, 2)]
 
 
 def test_update_order_targets_selected_order_and_current_customer() -> None:

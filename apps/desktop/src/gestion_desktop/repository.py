@@ -11,6 +11,8 @@ from gestion_desktop.config import Settings
 from gestion_desktop.legacy import serialize_legacy_order
 from gestion_desktop.models import LegacyRecord, OrderInput, OrderRecord
 
+PAGE_SIZE = 1_000
+
 
 class RepositoryError(RuntimeError):
     """Raised when an online order operation cannot be completed."""
@@ -41,17 +43,26 @@ class SupabaseRepository:
         self.client = client
 
     def list_orders(self) -> list[OrderRecord]:
-        response = (
-            self.client.table("repair_orders")
-            .select(
-                "id,order_number,customer_id,equipment,accessories,reported_fault,"
-                "resolution,budget_cents,status,received_on,picked_up_on,"
-                "customers(full_name,address,phone)"
+        rows: list[dict[str, Any]] = []
+        start = 0
+        while True:
+            response = (
+                self.client.table("repair_orders")
+                .select(
+                    "id,order_number,customer_id,equipment,accessories,reported_fault,"
+                    "resolution,budget_cents,status,received_on,picked_up_on,"
+                    "customers(full_name,address,phone)"
+                )
+                .order("order_number")
+                .range(start, start + PAGE_SIZE - 1)
+                .execute()
             )
-            .order("order_number")
-            .execute()
-        )
-        return [self._record_from_row(row) for row in self._rows(response)]
+            page = self._rows(response)
+            rows.extend(page)
+            if len(page) < PAGE_SIZE:
+                break
+            start += PAGE_SIZE
+        return [self._record_from_row(row) for row in rows]
 
     def create_order(self, order: OrderInput) -> OrderRecord:
         customer_id = self._resolve_customer(order)
