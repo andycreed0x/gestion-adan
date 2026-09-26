@@ -27,8 +27,6 @@ skills-lock.json
 *.tsbuildinfo
 
 .vercel/
-.env*
-
 # Local operator credentials; never commit.
 secrets/
 
