@@ -35,7 +35,11 @@ export async function lookupCustomerByPhone(client: OrderServiceClient, rawPhone
   return data
 }
 
-async function resolveCustomer(client: OrderServiceClient, input: { customerName: string; customerAddress: string; customerPhone: string }): Promise<string> {
+async function resolveCustomer(
+  client: OrderServiceClient,
+  input: { customerName: string; customerAddress: string; customerPhone: string },
+  currentCustomerId?: string | null,
+): Promise<string> {
   const normalizedPhone = normalizeArgentinePhone(input.customerPhone)
   if (normalizedPhone) {
     const existing = await lookupCustomerByPhone(client, input.customerPhone)
@@ -47,6 +51,15 @@ async function resolveCustomer(client: OrderServiceClient, input: { customerName
       if (error) throw error
       return existing.id
     }
+  }
+
+  if (currentCustomerId) {
+    const { error } = await client
+      .from('customers')
+      .update({ full_name: input.customerName, address: input.customerAddress, phone: input.customerPhone })
+      .eq('id', currentCustomerId)
+    if (error) throw error
+    return currentCustomerId
   }
 
   const { data, error } = await client
@@ -83,7 +96,14 @@ export async function createOrder(client: OrderServiceClient, userId: string, dr
 
 export async function updateOrder(client: OrderServiceClient, orderId: string, draft: OrderDraft) {
   const input = validatedDraft(draft)
-  const customerId = await resolveCustomer(client, input)
+  const { data: currentOrder, error: currentOrderError } = await client
+    .from('repair_orders')
+    .select('customer_id')
+    .eq('id', orderId)
+    .maybeSingle()
+  if (currentOrderError) throw currentOrderError
+
+  const customerId = await resolveCustomer(client, input, currentOrder?.customer_id)
   const { error } = await client
     .from('repair_orders')
     .update({

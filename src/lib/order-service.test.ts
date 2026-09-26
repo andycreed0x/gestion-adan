@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createOrder, lookupCustomerByPhone } from './order-service'
+import { createOrder, lookupCustomerByPhone, updateOrder } from './order-service'
 
 function fakeSupabase(existingCustomer: { id: string } | null = null) {
   const calls: Array<[string, string, unknown?]> = []
@@ -14,7 +14,10 @@ function fakeSupabase(existingCustomer: { id: string } | null = null) {
   }
   const orders = {
     insert: (payload: unknown) => { calls.push(['orders.insert', '', payload]); return orders },
-    select: () => orders,
+    select: (columns?: string) => { calls.push(['orders.select', '', columns]); return orders },
+    eq: (column: string, value: string) => { calls.push(['orders.eq', column, value]); return orders },
+    maybeSingle: async () => ({ data: { customer_id: 'existing-customer' }, error: null }),
+    update: (payload: unknown) => { calls.push(['orders.update', '', payload]); return orders },
     single: async () => ({ data: { id: 'order-id', order_number: 9380 }, error: null }),
   }
   return { calls, from: (table: string) => table === 'customers' ? customers : orders }
@@ -44,5 +47,15 @@ describe('order service customer identity', () => {
     await createOrder(supabase, 'user-id', { customerName: 'Ana', customerAddress: '', customerPhone: '', equipment: 'TV' })
 
     expect(supabase.calls).toContainEqual(['customers.insert', '', { full_name: 'Ana', address: '', phone: '' }])
+  })
+
+  it('updates the current customer instead of orphaning it when an edited order has no phone', async () => {
+    const supabase = fakeSupabase()
+
+    await updateOrder(supabase, 'order-id', { customerName: 'Ana', customerAddress: 'Nueva 123', customerPhone: '', equipment: 'TV' })
+
+    expect(supabase.calls).toContainEqual(['customers.update', '', { full_name: 'Ana', address: 'Nueva 123', phone: '' }])
+    expect(supabase.calls).not.toContainEqual(['customers.insert', '', expect.anything()])
+    expect(supabase.calls).toContainEqual(['orders.update', '', expect.objectContaining({ customer_id: 'existing-customer' })])
   })
 })
