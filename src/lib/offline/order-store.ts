@@ -4,10 +4,11 @@ import type { OrderStatus } from '../orders'
 import type { CachedCustomer, CachedOrder, OrderStore, PendingCreate, PersistedOrder } from './types'
 
 const DATABASE_NAME = 'adan-orders-v1'
-const DATABASE_VERSION = 1
+const DATABASE_VERSION = 2
 const ORDER_STORE = 'orders'
 const CUSTOMER_STORE = 'customers'
 const PENDING_STORE = 'pendingCreates'
+const SYNCED_PENDING_STORE = 'syncedPendingCreates'
 
 function customerFromOrder(order: CachedOrder): CachedCustomer | null {
   const phoneNormalized = normalizeArgentinePhone(order.customerPhone)
@@ -42,6 +43,7 @@ export function createMemoryOrderStore(): OrderStore {
   const orders = new Map<string, CachedOrder>()
   const customers = new Map<string, CachedCustomer>()
   const pendingCreates = new Map<string, PendingCreate>()
+  const syncedPendingCreates = new Map<string, PersistedOrder>()
 
   return {
     async putRecentPage(records) { await Promise.all(records.map((record) => this.putOrder(record))) },
@@ -62,13 +64,19 @@ export function createMemoryOrderStore(): OrderStore {
       const pending = pendingCreates.get(localId)
       if (!pending) return
       pendingCreates.delete(localId)
+      syncedPendingCreates.set(localId, persisted)
       await this.putOrder(orderFromPending(pending, persisted))
+    },
+    async takePersistedForPending(localId) {
+      const persisted = syncedPendingCreates.get(localId) ?? null
+      syncedPendingCreates.delete(localId)
+      return persisted
     },
     async markSyncFailure(localId, message) {
       const pending = pendingCreates.get(localId)
       if (pending) pendingCreates.set(localId, { ...pending, syncError: message })
     },
-    async clear() { orders.clear(); customers.clear(); pendingCreates.clear() },
+    async clear() { orders.clear(); customers.clear(); pendingCreates.clear(); syncedPendingCreates.clear() },
   }
 }
 
@@ -95,6 +103,7 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains(ORDER_STORE)) database.createObjectStore(ORDER_STORE, { keyPath: 'id' })
       if (!database.objectStoreNames.contains(CUSTOMER_STORE)) database.createObjectStore(CUSTOMER_STORE, { keyPath: 'phoneNormalized' })
       if (!database.objectStoreNames.contains(PENDING_STORE)) database.createObjectStore(PENDING_STORE, { keyPath: 'localId' })
+      if (!database.objectStoreNames.contains(SYNCED_PENDING_STORE)) database.createObjectStore(SYNCED_PENDING_STORE, { keyPath: 'localId' })
     }
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
@@ -142,13 +151,33 @@ export function createBrowserOrderStore(): OrderStore {
       const pending = await store.getPending(localId)
       if (!pending) return
       const db = await database
-      const transaction = db.transaction([PENDING_STORE, ORDER_STORE, CUSTOMER_STORE], 'readwrite')
+      const transaction = db.transaction([PENDING_STORE, ORDER_STORE, CUSTOMER_STORE, SYNCED_PENDING_STORE], 'readwrite')
       transaction.objectStore(PENDING_STORE).delete(localId)
+      transaction.objectStore(SYNCED_PENDING_STORE).put({ localId, ...persisted })
       const order = orderFromPending(pending, persisted)
       transaction.objectStore(ORDER_STORE).put(order)
       const customer = customerFromOrder(order)
       if (customer) transaction.objectStore(CUSTOMER_STORE).put(customer)
       await transactionDone(transaction)
+    },
+    async takePersistedForPending(localId) {
+      const db = await database
+      return new Promise<PersistedOrder | null>((resolve, reject) => {
+        const transaction = db.transaction(SYNCED_PENDING_STORE, 'readwrite')
+        const synced = transaction.objectStore(SYNCED_PENDING_STORE)
+        const request = synced.get(localId) as IDBRequest<(PersistedOrder & { localId: string }) | undefined>
+        let persisted: PersistedOrder | null = null
+        request.onsuccess = () => {
+          if (request.result) {
+            persisted = { id: request.result.id, orderNumber: request.result.orderNumber }
+            synced.delete(localId)
+          }
+        }
+        request.onerror = () => reject(request.error)
+        transaction.oncomplete = () => resolve(persisted)
+        transaction.onerror = () => reject(transaction.error)
+        transaction.onabort = () => reject(transaction.error)
+      })
     },
     async markSyncFailure(localId, message) {
       const pending = await store.getPending(localId)
@@ -156,8 +185,8 @@ export function createBrowserOrderStore(): OrderStore {
     },
     async clear() {
       const db = await database
-      const transaction = db.transaction([ORDER_STORE, CUSTOMER_STORE, PENDING_STORE], 'readwrite')
-      for (const storeName of [ORDER_STORE, CUSTOMER_STORE, PENDING_STORE]) transaction.objectStore(storeName).clear()
+      const transaction = db.transaction([ORDER_STORE, CUSTOMER_STORE, PENDING_STORE, SYNCED_PENDING_STORE], 'readwrite')
+      for (const storeName of [ORDER_STORE, CUSTOMER_STORE, PENDING_STORE, SYNCED_PENDING_STORE]) transaction.objectStore(storeName).clear()
       await transactionDone(transaction)
     },
   }

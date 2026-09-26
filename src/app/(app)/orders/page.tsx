@@ -1,5 +1,3 @@
-import Link from 'next/link'
-
 import { OrdersWorkspace } from '@/components/orders-workspace'
 import { orderListHref, parseOrderListSearchParams, queryOrderPage } from '@/lib/order-list'
 import { orderStatuses } from '@/lib/orders'
@@ -26,7 +24,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
   return (
     <section className="page-section">
-      <div className="page-heading"><div><p className="eyebrow">Operación diaria</p><h1>Órdenes de reparación</h1></div><Link className="button" href="/orders/new">Nueva orden</Link></div>
+      <div className="page-heading"><div><p className="eyebrow">Operación diaria</p><h1>Órdenes de reparación</h1></div><a className="button" href="/orders/new">Nueva orden</a></div>
       <form className="search-form">
         <input name="q" defaultValue={filters.q} placeholder="Buscar por número, cliente, teléfono o equipo" />
         <select name="status" defaultValue={filters.status}><option value="">Todos los estados</option>{orderStatuses.map((option) => <option key={option} value={option}>{option}</option>)}</select>
@@ -36,13 +34,13 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       </form>
       <div className="filter-actions">
         <a className="button secondary" href={exportQuery.size ? `/orders/export?${exportQuery}` : '/orders/export'}>Descargar CSV</a>
-        {!filters.implicitRecentWindow ? <Link href="/orders">Limpiar filtros</Link> : null}
+        {!filters.implicitRecentWindow ? <a href="/orders">Limpiar filtros</a> : null}
         <span className="muted">{result.total} órdenes · Página {result.page} de {totalPages}</span>
       </div>
       <OrdersWorkspace orders={tableOrders} prefetchAllRecent={filters.implicitRecentWindow} />
       <nav className="filter-actions" aria-label="Paginación de órdenes">
-        {result.page > 1 ? <Link className="button secondary" href={orderListHref(filters, result.page - 1)}>Anterior</Link> : <span />}
-        {result.page < totalPages ? <Link className="button secondary" href={orderListHref(filters, result.page + 1)}>Siguiente</Link> : null}
+        {result.page > 1 ? <a className="button secondary" href={orderListHref(filters, result.page - 1)}>Anterior</a> : <span />}
+        {result.page < totalPages ? <a className="button secondary" href={orderListHref(filters, result.page + 1)}>Siguiente</a> : null}
       </nav>
     </section>
   )

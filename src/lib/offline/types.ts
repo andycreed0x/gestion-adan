@@ -38,6 +38,7 @@ export type OrderStore = {
   getPending: (localId: string) => Promise<PendingCreate | null>
   listPending: () => Promise<PendingCreate[]>
   replacePendingWithPersisted: (localId: string, persisted: PersistedOrder) => Promise<void>
+  takePersistedForPending: (localId: string) => Promise<PersistedOrder | null>
   markSyncFailure: (localId: string, message: string) => Promise<void>
   clear: () => Promise<void>
 }

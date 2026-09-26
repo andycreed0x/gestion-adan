@@ -1,5 +1,3 @@
-import Link from 'next/link'
-
 import { formatCurrency } from '@/lib/orders'
 
 export type PersistedOrderRow = {
@@ -36,7 +34,7 @@ export function OrderTable({ orders }: { orders: OrderRow[] }) {
         <tbody>
           {orders.map((order) => (
             <tr key={order.persistence === 'pending' ? order.localId : order.id}>
-              <td>{order.persistence === 'pending' ? <Link href={`/orders/new?pending=${order.localId}`}>Pendiente</Link> : <Link href={`/orders/${order.id}`}>#{order.order_number}</Link>}</td>
+              <td>{order.persistence === 'pending' ? <a href={`/orders/new?pending=${order.localId}`}>Pendiente</a> : <a href={`/orders/${order.id}`}>#{order.order_number}</a>}</td>
               <td>{order.customers?.full_name ?? 'Sin cliente'}<br /><small>{order.customers?.phone}</small></td>
               <td>{order.equipment}</td>
               <td><span className={`status status-${order.status}`}>{order.persistence === 'pending' ? 'pendiente' : order.status}</span></td>

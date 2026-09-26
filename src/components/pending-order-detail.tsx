@@ -24,12 +24,24 @@ export function PendingOrderDetail({ localId }: { localId: string }) {
   const [missing, setMissing] = useState(false)
 
   const refresh = async () => {
-    const next = await createBrowserOrderStore().getPending(localId)
+    const store = createBrowserOrderStore()
+    const next = await store.getPending(localId)
+    if (!next) {
+      const persisted = await store.takePersistedForPending(localId)
+      if (persisted) {
+        window.location.replace(`/orders/${persisted.id}`)
+        return
+      }
+    }
     setPending(next)
     setMissing(!next)
   }
 
-  useEffect(() => { void refresh() }, [localId])
+  useEffect(() => {
+    void refresh()
+    window.addEventListener('adan-offline-sync', refresh)
+    return () => window.removeEventListener('adan-offline-sync', refresh)
+  }, [localId])
 
   if (missing) return <p className="form-error">No se encontró la orden pendiente en este navegador.</p>
   if (!pending) return <p className="muted">Cargando orden pendiente…</p>

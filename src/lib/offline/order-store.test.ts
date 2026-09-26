@@ -20,6 +20,8 @@ describe('offline order store', () => {
 
     expect(await store.getPending('local-1')).toBeNull()
     expect((await store.listPending()).map((item) => item.localId)).toEqual(['local-2'])
+    expect(await store.takePersistedForPending('local-1')).toEqual({ id: 'server-1', orderNumber: 9380 })
+    expect(await store.takePersistedForPending('local-1')).toBeNull()
   })
 
   it('looks up a cached customer by canonical phone and clears all private data', async () => {

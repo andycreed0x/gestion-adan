@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { AttachmentForm } from '@/components/attachment-form'
@@ -46,7 +45,7 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
 
   return (
     <section className="page-section">
-      <div className="page-heading"><div><Link href="/orders">← Órdenes</Link><h1>Orden #{order.order_number}</h1><p className="muted">{formatCurrency(order.budget_cents)}</p></div><div className="detail-actions"><Link className="button" href="/orders/new">Nueva orden</Link><Link className="button secondary" href={`/orders/${id}/print`}>Imprimir ticket</Link><WhatsAppOrderButton order={{ persistence: 'persisted', orderNumber: order.order_number, customerName: customer?.full_name ?? '', customerAddress: customer?.address ?? '', customerPhone: customer?.phone ?? '', equipment: order.equipment, accessories: order.accessories, reportedFault: order.reported_fault, resolution: order.resolution, budgetCents: order.budget_cents, status: order.status as OrderStatus, receivedOn: order.received_on, pickedUpOn: order.picked_up_on ?? null }} /></div></div>
+      <div className="page-heading"><div><a href="/orders">← Órdenes</a><h1>Orden #{order.order_number}</h1><p className="muted">{formatCurrency(order.budget_cents)}</p></div><div className="detail-actions"><a className="button" href="/orders/new">Nueva orden</a><a className="button secondary" href={`/orders/${id}/print`}>Imprimir ticket</a><WhatsAppOrderButton order={{ persistence: 'persisted', orderNumber: order.order_number, customerName: customer?.full_name ?? '', customerAddress: customer?.address ?? '', customerPhone: customer?.phone ?? '', equipment: order.equipment, accessories: order.accessories, reportedFault: order.reported_fault, resolution: order.resolution, budgetCents: order.budget_cents, status: order.status as OrderStatus, receivedOn: order.received_on, pickedUpOn: order.picked_up_on ?? null }} /></div></div>
       <CachedOrderDetail order={{ id: order.id, orderNumber: order.order_number, customerName: customer?.full_name ?? '', customerAddress: customer?.address ?? '', customerPhone: customer?.phone ?? '', equipment: order.equipment, accessories: order.accessories, reportedFault: order.reported_fault, resolution: order.resolution, budgetCents: order.budget_cents, status: order.status as OrderStatus, receivedOn: order.received_on, pickedUpOn: order.picked_up_on ?? null }} />
       <OrderForm mode="update" action={action} error={error} submitLabel="Guardar cambios" confirmed={saved === '1'} values={{
         customerName: customer?.full_name,

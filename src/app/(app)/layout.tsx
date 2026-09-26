@@ -18,9 +18,9 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link href="/orders" className="brand">Servicio Técnico ADAN</Link>
+        <a href="/orders" className="brand">Servicio Técnico ADAN</a>
         <nav>
-          <Link href="/orders">Órdenes</Link>
+          <a href="/orders">Órdenes</a>
           <Link href="/reports">Reportes</Link>
           <LogoutButton action={logoutAction} />
         </nav>
