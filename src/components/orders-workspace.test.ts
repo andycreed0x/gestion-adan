@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
-import { mergeCachedPending, shouldShowOfflineBanner } from './orders-workspace'
+import { buildOrderCacheRoutes, mergeCachedPending, shouldShowOfflineBanner } from './orders-workspace'
 import { orderListHref, parseOrderListSearchParams } from '@/lib/order-list'
 
 describe('cached order workspace helpers', () => {
+  it('includes every recent list page alongside order detail and print routes', () => {
+    expect(buildOrderCacheRoutes([{ id: 'server-1' }], ['/orders', '/orders?page=2'])).toEqual([
+      '/orders',
+      '/orders?page=2',
+      '/orders/server-1',
+      '/orders/server-1/print',
+    ])
+  })
+
   it('preserves active filters in pagination URLs', () => {
     const filters = parseOrderListSearchParams(new URLSearchParams('q=ana&status=ready&receivedFrom=2026-01-01&page=1'))
     expect(orderListHref(filters, 2)).toBe('/orders?q=ana&status=ready&receivedFrom=2026-01-01&page=2')

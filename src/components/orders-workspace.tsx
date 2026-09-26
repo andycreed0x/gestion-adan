@@ -30,11 +30,14 @@ type OrdersWorkspaceProps = {
   prefetchAllRecent: boolean
 }
 
-async function cacheOrderRoutes(orders: Array<{ id: string }>) {
+export function buildOrderCacheRoutes(orders: Array<{ id: string }>, listUrls: string[] = ['/orders']): string[] {
+  return [...new Set([...listUrls, ...orders.flatMap((order) => [`/orders/${order.id}`, `/orders/${order.id}/print`])])]
+}
+
+async function cacheOrderRoutes(orders: Array<{ id: string }>, listUrls: string[] = ['/orders']) {
   if (!('serviceWorker' in navigator)) return
-  const urls = orders.flatMap((order) => [`/orders/${order.id}`, `/orders/${order.id}/print`])
   const registration = await navigator.serviceWorker.ready
-  registration.active?.postMessage({ type: 'CACHE_ORDER_ROUTES', urls: ['/orders', ...urls] })
+  registration.active?.postMessage({ type: 'CACHE_ORDER_ROUTES', urls: buildOrderCacheRoutes(orders, listUrls) })
 }
 
 export function OrdersWorkspace({ orders, prefetchAllRecent }: OrdersWorkspaceProps) {
@@ -51,22 +54,26 @@ export function OrdersWorkspace({ orders, prefetchAllRecent }: OrdersWorkspacePr
     const preload = async () => {
       if (!navigator.onLine) return
       const all = [...orders]
+      const listUrls = ['/orders']
       if (prefetchAllRecent) {
         try {
           const first = await fetch('/api/orders')
+          if (!first.ok) throw new Error('Could not preload recent orders')
           const firstPage = await first.json()
           const pages = Math.ceil((firstPage.total ?? 0) / (firstPage.pageSize ?? 25))
           all.splice(0, all.length, ...(firstPage.orders ?? []))
           for (let page = 2; page <= pages; page += 1) {
             const response = await fetch(`/api/orders?page=${page}`)
+            if (!response.ok) throw new Error('Could not preload a recent orders page')
             const body = await response.json()
             all.push(...(body.orders ?? []))
+            listUrls.push(`/orders?page=${page}`)
           }
         } catch {
           // The current server-rendered page remains available; the worker cannot prefetch more routes offline.
         }
       }
-      await cacheOrderRoutes(all)
+      await cacheOrderRoutes(all, listUrls)
     }
     void refresh()
     void preload()
