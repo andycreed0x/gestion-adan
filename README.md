@@ -163,3 +163,65 @@ La migración `normalize_customer_phone_identity` conserva el cliente duplicado
 más recientemente actualizado, mueve allí sus órdenes y elimina los duplicados
 antes de aplicar unicidad para teléfonos normalizables. Los teléfonos históricos
 que no puedan normalizarse se conservan como texto y no se fusionan.
+
+### Operación web de órdenes y trabajo sin conexión
+
+Aplicá primero las migraciones y su verificación administrativa antes de usar
+esta versión en un entorno compartido:
+
+~~~bash
+export SUPABASE_DB_URL='postgresql://postgres:PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require'
+node scripts/apply-migration.mjs
+node scripts/verify-schema.mjs
+~~~
+
+El listado inicial de `/orders` muestra las órdenes desde hoy hasta los 29 días
+calendario anteriores, usando la zona `America/Argentina/Buenos_Aires`. Cada
+página contiene 25 filas. Al aplicar búsqueda, estado o fechas, el filtro
+consulta el historial y los enlaces Anterior/Siguiente conservan esos filtros.
+
+En Nueva orden, el teléfono es opcional y se consulta al pulsar Enter o al
+salir del campo. Las variantes `11 4444-5555`, `+54 11 4444-5555` y
+`+54 9 11 4444-5555` identifican al mismo cliente. Si hay coincidencia se
+completan nombre y dirección; al guardar se actualizan con los valores editados.
+Enter avanza al siguiente control y Shift+Enter inserta una nueva línea en los
+campos largos. Los errores se señalan en el mismo campo y Guardar queda
+deshabilitado hasta que la orden sea válida.
+
+Después de visitar la lista reciente con conexión, el navegador guarda las
+vistas paginadas, detalles e impresiones de esas órdenes. Si la red falla, se
+muestra `Sin conexión` sólo mientras se usa ese contenido guardado. Se pueden
+abrir e imprimir órdenes recientes cacheadas y crear nuevas órdenes locales.
+Una orden local dice `Pendiente de sincronización`, no muestra número oficial y
+se sincroniza automáticamente al recuperar la red. WhatsApp permanece
+deshabilitado para órdenes pendientes, sin teléfono o sin conexión. Al cerrar
+sesión se eliminan IndexedDB y Cache Storage para que esos datos no estén
+disponibles al siguiente usuario del navegador.
+
+#### Aceptación manual en navegador
+
+1. Con sesión iniciada y conexión, abrí Nueva orden. Probá cada uno de los tres
+   formatos de teléfono anteriores para un cliente existente y comprobá que
+   Enter completa nombre y dirección. Cambiá la dirección, guardá y repetí la
+   búsqueda para comprobar la actualización.
+2. Probá Enter entre todos los controles; en falla, accesorios y resolución,
+   comprobá que Shift+Enter agrega una línea. Ingresá un presupuesto no
+   numérico: el campo debe verse inválido, el texto no debe desaparecer y
+   Guardar debe quedar deshabilitado.
+3. En `/orders` sin filtros, comprobá que la fecha más antigua está dentro de
+   los últimos 30 días argentinos. Aplicá un rango anterior a esa ventana y
+   recorré Anterior/Siguiente: debe conservarse el filtro y poderse ver el
+   historial.
+4. Esperá a que cargue el listado reciente y sus páginas. En DevTools activá
+   Network > Offline, recargá `/orders` y recorré las páginas cacheadas. Abrí
+   una orden reciente: debe aparecer `Sin conexión`; abrí Imprimir ticket y
+   verificá que el diálogo de impresión sigue disponible.
+5. Aún offline, creá una orden válida. Confirmá el aviso
+   `Pendiente de sincronización`, imprimila sin número oficial y verificá que
+   permanece tras recargar. Volvé a activar la red y esperá la sincronización:
+   la orden debe pasar a su detalle persistido con el número asignado por la
+   base de datos.
+6. Con conexión, abrí una orden persistida con teléfono y pulsá Enviar por
+   WhatsApp. Debe abrir WhatsApp Web con el resumen de todos los campos.
+   Cerrá sesión, volvé a entrar y activá Offline: las vistas de la sesión
+   anterior no deben poder abrirse desde caché.

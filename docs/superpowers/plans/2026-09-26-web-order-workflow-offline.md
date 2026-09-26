@@ -470,3 +470,17 @@ git commit -m "docs: document offline order workflow"
 - **Type consistency:** Phone canonicalization is introduced in Task 1 and consumed by the database/API/UI thereafter; `OrderStore`/`syncPendingOrders` originate in Task 4 before UI consumers; `OrderTicket` originates in Task 1 before both pending and print consumers.
 - **Review-focus coverage:** Each of the five risks in Review Focus has a named test in the owning task.
 - **Proportion:** The plan defines public contracts, persistence states and test evidence without prescribing component internals beyond behavior that would otherwise be ambiguous.
+
+## Registro de ejecución
+
+- La implementación se desarrolla en `feat/web-order-workflow-offline`, aislada
+  en `.worktrees/web-order-workflow-offline`.
+- La validación de esquema queda explícitamente como paso del operador hasta
+  disponer de `SUPABASE_DB_URL`; este entorno no aplica ni afirma haber aplicado
+  la migración remotamente.
+- La precarga offline debe incluir `/orders` y cada `/orders?page=N` de la
+  ventana reciente, además de detalles e impresiones. Cachear sólo la primera
+  ruta del listado impediría paginar sin conexión.
+- El README contiene el recorrido manual para teléfonos, validación, ventana de
+  30 días, historial filtrado, caché, impresión offline, sincronización y
+  limpieza de datos al cerrar sesión.

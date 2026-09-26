@@ -55,3 +55,20 @@ La aplicación instala un service worker propio que cachea sólo el shell y las 
 5. Al desconectar se pueden listar, abrir detalle e imprimir órdenes recientes cacheadas, con “Sin conexión” visible. Las páginas no cacheadas no afirman estar disponibles.
 6. Una alta offline se conserva tras recargar, se imprime como pendiente y se sincroniza al recuperar conexión, obteniendo después su número oficial sin duplicarse.
 7. WhatsApp abre con un resumen completo sólo para una orden persistida con teléfono válido.
+
+## Verificación operativa
+
+La validación de navegador se realiza con una sesión autenticada y la migración
+de teléfono aplicada. Debe probarse la búsqueda de un mismo cliente con
+`11 4444-5555`, `+54 11 4444-5555` y `+54 9 11 4444-5555`; el primer listado
+sin filtros para confirmar la ventana argentina de 30 días; y un rango anterior
+para recorrer el historial de 25 filas por página.
+
+Después de dejar terminar la precarga reciente, DevTools en modo Offline debe
+permitir navegar todas las páginas cacheadas, abrir un detalle e imprimirlo con
+el aviso `Sin conexión`. En ese estado también se crea e imprime una orden
+`Pendiente de sincronización`, sin número. Al restaurar la conexión, debe
+sincronizarse sola y recibir el número oficial. Finalmente, cerrar sesión y
+probar Offline tras un nuevo login confirma que Cache Storage e IndexedDB se
+limpiaron. La aceptación completa, incluidos pasos y comandos de migración,
+queda reproducible en el README.
