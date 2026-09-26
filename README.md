@@ -151,3 +151,15 @@ node scripts/seed-admin.mjs
 ~~~
 
 Cambiá la contraseña inicial tras el primer acceso.
+
+### Clientes por teléfono y operación sin conexión
+
+La aplicación web identifica al cliente por su teléfono argentino cuando está
+presente. Conserva el formato escrito en `customers.phone` y usa una versión
+canónica interna para reconocer variantes como `11 4444-5555`, `+54 11
+4444-5555` y `+54 9 11 4444-5555`.
+
+La migración `normalize_customer_phone_identity` conserva el cliente duplicado
+más recientemente actualizado, mueve allí sus órdenes y elimina los duplicados
+antes de aplicar unicidad para teléfonos normalizables. Los teléfonos históricos
+que no puedan normalizarse se conservan como texto y no se fusionan.
