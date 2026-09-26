@@ -1,5 +1,7 @@
 from datetime import date
 
+import pytest
+
 from gestion_desktop.models import OrderInput, parse_ars_cents
 
 
@@ -9,6 +11,11 @@ def test_parse_ars_cents_accepts_grouping_and_decimal_comma() -> None:
 
 def test_parse_ars_cents_returns_none_for_blank_budget() -> None:
     assert parse_ars_cents("   ") is None
+
+
+def test_parse_ars_cents_rejects_repeated_decimal_separator() -> None:
+    with pytest.raises(ValueError, match="numérico"):
+        parse_ars_cents("1,2,3")
 
 
 def test_order_input_marks_pickup_date_as_picked_up() -> None:

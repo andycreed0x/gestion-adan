@@ -28,6 +28,8 @@ def parse_ars_cents(value: str) -> int | None:
         integer_part, fraction = compact.rsplit(decimal_separator, 1)
         if not fraction or not fraction.isdigit() or len(fraction) > 2:
             raise ValueError("El presupuesto admite como máximo dos decimales")
+        if decimal_separator in integer_part:
+            raise ValueError("El presupuesto debe ser numérico")
         normalized = (
             integer_part.replace(".", "").replace(",", "")
             + "."
