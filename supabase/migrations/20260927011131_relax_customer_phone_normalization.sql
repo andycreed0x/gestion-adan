@@ -6,23 +6,8 @@ set search_path = ''
 as $$
 declare
   digits text := regexp_replace(coalesce(value, ''), '\D', '', 'g');
-  national_digits text;
 begin
-  if digits = '' then
-    return null;
-  end if;
-
-  national_digits := case
-    when digits like '549%' then substr(digits, 4)
-    when digits like '54%' then substr(digits, 3)
-    else digits
-  end;
-
-  if char_length(national_digits) = 10 then
-    return '549' || national_digits;
-  end if;
-
-  return digits;
+  return nullif(digits, '');
 end;
 $$;
 
