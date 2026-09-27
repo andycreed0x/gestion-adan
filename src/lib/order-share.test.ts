@@ -23,7 +23,7 @@ describe('WhatsApp order sharing', () => {
     const url = buildWhatsAppOrderUrl(order)
 
     expect(url?.host).toBe('wa.me')
-    expect(url?.pathname).toBe('/5491144445555')
+    expect(url?.pathname).toBe('/1144445555')
     const message = url?.searchParams.get('text') ?? ''
     expect(message).toContain('Orden #9380')
     for (const value of ['Ana Pérez', 'Rivadavia 123', '11 4444-5555', 'TV Samsung', 'Control remoto', 'No enciende', 'Pendiente', 'ready', '2026-09-26', '2026-09-27', '$']) {

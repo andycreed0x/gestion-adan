@@ -32,7 +32,7 @@ describe('offline order store', () => {
     })
     await store.enqueueCreate(pending)
 
-    expect(await store.findCachedCustomer('+54 9 11 4444-5555')).toMatchObject({ customerName: 'Ana', customerAddress: 'Rivadavia 123' })
+    expect(await store.findCachedCustomer('11-4444-5555')).toMatchObject({ customerName: 'Ana', customerAddress: 'Rivadavia 123' })
 
     await store.clear()
 

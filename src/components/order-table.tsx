@@ -1,3 +1,5 @@
+'use client'
+
 import { formatCurrency } from '@/lib/orders'
 
 export type PersistedOrderRow = {
@@ -24,13 +26,18 @@ export type PendingOrderRow = {
 
 export type OrderRow = PersistedOrderRow | PendingOrderRow
 
-export function OrderTable({ orders }: { orders: OrderRow[] }) {
+type OrderTableProps = {
+  orders: OrderRow[]
+  deleteAction?: (formData: FormData) => void | Promise<void>
+}
+
+export function OrderTable({ orders, deleteAction }: OrderTableProps) {
   if (!orders.length) return <p className="empty-state">No hay órdenes que coincidan con la búsqueda.</p>
 
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Orden</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Presupuesto</th><th>Ingreso</th></tr></thead>
+        <thead><tr><th>Orden</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Presupuesto</th><th>Ingreso</th><th>Acciones</th></tr></thead>
         <tbody>
           {orders.map((order) => (
             <tr key={order.persistence === 'pending' ? order.localId : order.id}>
@@ -40,6 +47,9 @@ export function OrderTable({ orders }: { orders: OrderRow[] }) {
               <td><span className={`status status-${order.status}`}>{order.persistence === 'pending' ? 'pendiente' : order.status}</span></td>
               <td>{formatCurrency(order.budget_cents)}</td>
               <td>{order.received_on}</td>
+              <td>{order.persistence === 'pending' || !deleteAction ? null : <form action={deleteAction} onSubmit={(event) => {
+                if (!window.confirm(`¿Borrar definitivamente la orden #${order.order_number}?`)) event.preventDefault()
+              }}><input type="hidden" name="orderId" value={order.id} /><button type="submit" className="button-danger" aria-label={`Borrar orden #${order.order_number}`}>Borrar</button></form>}</td>
             </tr>
           ))}
         </tbody>

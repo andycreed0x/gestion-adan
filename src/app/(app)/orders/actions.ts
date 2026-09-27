@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { parseOrderInput } from '@/lib/orders'
-import { createOrder, updateOrder } from '@/lib/order-service'
+import { createOrder, deleteOrder, updateOrder } from '@/lib/order-service'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 function formValues(formData: FormData) {
@@ -39,4 +39,13 @@ export async function updateOrderAction(orderId: string, formData: FormData) {
   revalidatePath('/orders')
   revalidatePath(`/orders/${orderId}`)
   redirect(`/orders/${orderId}?saved=1`)
+}
+
+export async function deleteOrderAction(formData: FormData) {
+  const orderId = formData.get('orderId')
+  if (typeof orderId !== 'string' || !orderId) return
+
+  const { supabase } = await requireUser()
+  await deleteOrder(supabase, orderId)
+  revalidatePath('/orders')
 }

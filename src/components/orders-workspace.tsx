@@ -28,6 +28,7 @@ export function shouldShowOfflineBanner(online: boolean, hasCachedContent: boole
 type OrdersWorkspaceProps = {
   orders: PersistedOrderRow[]
   prefetchAllRecent: boolean
+  deleteAction: (formData: FormData) => void | Promise<void>
 }
 
 export function buildOrderCacheRoutes(orders: Array<{ id: string }>, listUrls: string[] = ['/orders']): string[] {
@@ -40,7 +41,7 @@ async function cacheOrderRoutes(orders: Array<{ id: string }>, listUrls: string[
   registration.active?.postMessage({ type: 'CACHE_ORDER_ROUTES', urls: buildOrderCacheRoutes(orders, listUrls) })
 }
 
-export function OrdersWorkspace({ orders, prefetchAllRecent }: OrdersWorkspaceProps) {
+export function OrdersWorkspace({ orders, prefetchAllRecent, deleteAction }: OrdersWorkspaceProps) {
   const [online, setOnline] = useState(true)
   const [rows, setRows] = useState<OrderRow[]>(orders.map((order) => ({ ...order, persistence: 'persisted' })))
 
@@ -87,5 +88,5 @@ export function OrdersWorkspace({ orders, prefetchAllRecent }: OrdersWorkspacePr
     }
   }, [orders, prefetchAllRecent])
 
-  return <><OfflineBanner visible={shouldShowOfflineBanner(online, rows.length > 0)} /><OrderTable orders={rows} /></>
+  return <><OfflineBanner visible={shouldShowOfflineBanner(online, rows.length > 0)} /><OrderTable orders={rows} deleteAction={deleteAction} /></>
 }

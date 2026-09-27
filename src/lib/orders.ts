@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { validateArgentinePhone } from './customer-phone'
+import { normalizeArgentinePhone, validateArgentinePhone } from './customer-phone'
 
 export const orderStatuses = [
   'received',
@@ -157,7 +157,7 @@ export function validateOrderDraft(input: OrderDraft): OrderValidation {
       data: {
         customerName: parsed.data.customerName,
         customerAddress: parsed.data.customerAddress,
-        customerPhone: parsed.data.customerPhone,
+        customerPhone: normalizeArgentinePhone(parsed.data.customerPhone) ?? '',
         equipment: parsed.data.equipment,
         accessories: parsed.data.accessories,
         reportedFault: parsed.data.reportedFault,

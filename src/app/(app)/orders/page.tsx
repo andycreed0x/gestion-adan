@@ -1,4 +1,5 @@
 import { OrdersWorkspace } from '@/components/orders-workspace'
+import { deleteOrderAction } from '@/app/(app)/orders/actions'
 import { orderListHref, parseOrderListSearchParams, queryOrderPage } from '@/lib/order-list'
 import { orderStatuses } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -37,7 +38,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
         {!filters.implicitRecentWindow ? <a href="/orders">Limpiar filtros</a> : null}
         <span className="muted">{result.total} órdenes · Página {result.page} de {totalPages}</span>
       </div>
-      <OrdersWorkspace orders={tableOrders} prefetchAllRecent={filters.implicitRecentWindow} />
+      <OrdersWorkspace orders={tableOrders} prefetchAllRecent={filters.implicitRecentWindow} deleteAction={deleteOrderAction} />
       <nav className="filter-actions" aria-label="Paginación de órdenes">
         {result.page > 1 ? <a className="button secondary" href={orderListHref(filters, result.page - 1)}>Anterior</a> : <span />}
         {result.page < totalPages ? <a className="button secondary" href={orderListHref(filters, result.page + 1)}>Siguiente</a> : null}
