@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { validateArgentinePhone } from './customer-phone'
+
 export const orderStatuses = [
   'received',
   'in_progress',
@@ -24,6 +26,27 @@ export type RepairOrderInput = {
   pickedUpOn: string | null
 }
 
+export type OrderField =
+  | 'customerName'
+  | 'customerAddress'
+  | 'customerPhone'
+  | 'equipment'
+  | 'accessories'
+  | 'reportedFault'
+  | 'resolution'
+  | 'budget'
+  | 'status'
+  | 'receivedOn'
+  | 'pickedUpOn'
+
+export type OrderDraft = Partial<Record<OrderField, string>>
+
+export type OrderValidation = {
+  values: OrderDraft
+  fieldErrors: Partial<Record<OrderField, string>>
+  data?: RepairOrderInput
+}
+
 type ParseSuccess = { success: true; data: RepairOrderInput }
 type ParseFailure = { success: false; error: { issues: string[] } }
 export type OrderParseResult = ParseSuccess | ParseFailure
@@ -38,7 +61,7 @@ const rawOrderSchema = z.object({
   resolution: z.string().trim().optional().default(''),
   budget: z.string().trim().optional().default(''),
   status: z.enum(orderStatuses).optional().default('received'),
-  receivedOn: z.string().date().optional(),
+  receivedOn: z.string().date().optional().or(z.literal('')).default(''),
   pickedUpOn: z.string().date().optional().or(z.literal('')).default(''),
 })
 
@@ -92,24 +115,45 @@ function parseBudgetCents(raw: string): number | null {
 }
 
 export function parseOrderInput(input: unknown): OrderParseResult {
-  const parsed = rawOrderSchema.safeParse(input)
-  if (!parsed.success) {
+  const validation = validateOrderDraft(input as OrderDraft)
+  if (!validation.data) {
     return {
       success: false,
-      error: { issues: parsed.error.issues.map((issue) => issue.message) },
+      error: { issues: Object.values(validation.fieldErrors) },
     }
   }
+
+  return { success: true, data: validation.data }
+}
+
+export function validateOrderDraft(input: OrderDraft): OrderValidation {
+  const values = Object.fromEntries(
+    Object.entries(input ?? {}).map(([key, value]) => [key, String(value ?? '')]),
+  ) as OrderDraft
+  const fieldErrors: Partial<Record<OrderField, string>> = {}
+  const parsed = rawOrderSchema.safeParse(values)
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0] as OrderField | undefined
+      if (field && !fieldErrors[field]) fieldErrors[field] = issue.message
+    }
+  }
+
+  const phoneError = validateArgentinePhone(values.customerPhone ?? '')
+  if (phoneError) fieldErrors.customerPhone = phoneError
+
+  if (!parsed.success) return { values, fieldErrors }
 
   try {
     const pickedUpOn = parsed.data.pickedUpOn || null
     if (parsed.data.status === 'picked_up' && !pickedUpOn) {
-      return {
-        success: false,
-        error: { issues: ['La fecha de retiro es obligatoria para una orden retirada'] },
-      }
+      fieldErrors.pickedUpOn = 'La fecha de retiro es obligatoria para una orden retirada'
     }
+    const budgetCents = parseBudgetCents(parsed.data.budget)
+    if (Object.keys(fieldErrors).length) return { values, fieldErrors }
     return {
-      success: true,
+      values,
+      fieldErrors,
       data: {
         customerName: parsed.data.customerName,
         customerAddress: parsed.data.customerAddress,
@@ -118,18 +162,17 @@ export function parseOrderInput(input: unknown): OrderParseResult {
         accessories: parsed.data.accessories,
         reportedFault: parsed.data.reportedFault,
         resolution: parsed.data.resolution,
-        budgetCents: parseBudgetCents(parsed.data.budget),
+        budgetCents,
         status: pickedUpOn ? 'picked_up' : parsed.data.status,
-        receivedOn: parsed.data.receivedOn ?? new Date().toISOString().slice(0, 10),
+        receivedOn: parsed.data.receivedOn || new Date().toISOString().slice(0, 10),
         pickedUpOn,
       },
     }
   } catch (error) {
+    fieldErrors.budget = error instanceof Error ? error.message : 'Presupuesto inválido'
     return {
-      success: false,
-      error: {
-        issues: [error instanceof Error ? error.message : 'Presupuesto inválido'],
-      },
+      values,
+      fieldErrors,
     }
   }
 }

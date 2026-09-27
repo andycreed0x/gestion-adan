@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { logoutAction } from '@/app/login/actions'
+import { LogoutButton } from '@/components/logout-button'
+import { OfflineRuntime } from '@/components/offline-runtime'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export default async function AppLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -16,13 +18,14 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link href="/orders" className="brand">Servicio Técnico ADAN</Link>
+        <a href="/orders" className="brand">Servicio Técnico ADAN</a>
         <nav>
-          <Link href="/orders">Órdenes</Link>
+          <a href="/orders">Órdenes</a>
           <Link href="/reports">Reportes</Link>
-          <form action={logoutAction}><button className="link-button" type="submit">Salir</button></form>
+          <LogoutButton action={logoutAction} />
         </nav>
       </header>
+      <OfflineRuntime />
       <main className="app-main">{children}</main>
     </div>
   )

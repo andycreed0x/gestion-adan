@@ -73,12 +73,77 @@ try {
     'Missing repair order sequence safety trigger',
   )
 
+  const phoneColumn = await client.query(
+    `select is_nullable, data_type
+     from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'customers'
+       and column_name = 'phone_normalized'`,
+  )
+  assert.equal(phoneColumn.rows[0]?.data_type, 'text', 'Missing customers.phone_normalized')
+  assert.equal(phoneColumn.rows[0]?.is_nullable, 'YES', 'phone_normalized must allow empty phones')
+
+  const phoneIdentity = await client.query(
+    `select exists (
+       select 1
+       from pg_indexes
+       where schemaname = 'public'
+         and tablename = 'customers'
+         and indexname = 'customers_phone_normalized_key'
+         and indexdef ilike '%where (phone_normalized is not null)%'
+     ) as exists`,
+  )
+  assert.equal(phoneIdentity.rows[0]?.exists, true, 'Missing partial unique customer phone index')
+
+  const phoneTrigger = await client.query(
+    `select exists (
+       select 1
+       from pg_trigger trigger
+       join pg_proc proc on proc.oid = trigger.tgfoid
+       join pg_namespace namespace on namespace.oid = proc.pronamespace
+       where trigger.tgrelid = 'public.customers'::regclass
+         and not trigger.tgisinternal
+         and trigger.tgname = 'set_customer_phone_normalized'
+         and namespace.nspname = 'private'
+         and proc.proname = 'set_customer_phone_normalized'
+     ) as exists`,
+  )
+  assert.equal(phoneTrigger.rows[0]?.exists, true, 'Missing private customer phone normalization trigger')
+
+  const orderListView = await client.query(
+    `select relkind, coalesce(reloptions, '{}'::text[]) as reloptions
+     from pg_class
+     where oid = 'public.repair_order_list'::regclass`,
+  )
+  assert.equal(orderListView.rows[0]?.relkind, 'v', 'Missing repair_order_list view')
+  assert.equal(
+    orderListView.rows[0]?.reloptions.includes('security_invoker=true'),
+    true,
+    'repair_order_list must use security_invoker',
+  )
+
+  const orderListGrant = await client.query(
+    `select has_table_privilege('authenticated', 'public.repair_order_list', 'select') as allowed`,
+  )
+  assert.equal(orderListGrant.rows[0]?.allowed, true, 'authenticated must be allowed to read repair_order_list')
+
+  const pagingIndex = await client.query(
+    `select exists (
+       select 1
+       from pg_indexes
+       where schemaname = 'public'
+         and tablename = 'repair_orders'
+         and indexname = 'repair_orders_received_order_paging_idx'
+     ) as exists`,
+  )
+  assert.equal(pagingIndex.rows[0]?.exists, true, 'Missing repair order paging index')
+
   const bucket = await client.query(
     "select public from storage.buckets where id = 'order-attachments'",
   )
   assert.equal(bucket.rows[0]?.public, false, 'Attachment bucket must be private')
 
-  console.log(JSON.stringify({ tables: tableNames, rls: true, nextOrderNumber: 9380 }))
+  console.log(JSON.stringify({ tables: tableNames, rls: true, nextOrderNumber: 9380, customerPhoneIdentity: true }))
 } finally {
   await client.end().catch(() => undefined)
 }
