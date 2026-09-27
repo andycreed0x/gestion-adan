@@ -126,10 +126,16 @@ describe('order draft validation', () => {
     const result = validateOrderDraft(draft)
 
     expect(result.values).toMatchObject(draft)
-    expect(result.fieldErrors.customerPhone).toBe('Ingresá un teléfono argentino válido')
     expect(result.fieldErrors.budget).toBe('El presupuesto debe ser numérico')
     expect(result.fieldErrors.pickedUpOn).toBe('La fecha de retiro es obligatoria para una orden retirada')
   })
+})
+
+it('stores every typed phone digit without adding a country prefix', () => {
+  const result = parseOrderInput({ customerName: 'Ana', equipment: 'TV', customerPhone: '2345-2345' })
+
+  expect(result.success).toBe(true)
+  if (result.success) expect(result.data.customerPhone).toBe('23452345')
 })
 
 it('allows a blank received date and supplies today during parsing', () => {

@@ -1,7 +1,16 @@
 import { normalizeArgentinePhone } from './customer-phone'
 import { type OrderDraft, type OrderValidation, validateOrderDraft } from './orders'
 
-export type OrderServiceClient = { from: (table: 'customers' | 'repair_orders') => any }
+export type OrderServiceClient = { from: (table: 'customers' | 'repair_orders' | 'repair_order_attachments') => any }
+
+export type OrderDeletionClient = {
+  from: (table: 'repair_orders' | 'repair_order_attachments') => any
+  storage: {
+    from: (bucket: 'order-attachments') => {
+      remove: (paths: string[]) => Promise<{ error: Error | null }>
+    }
+  }
+}
 
 export type CustomerLookup = {
   id: string
@@ -117,6 +126,26 @@ export async function updateOrder(client: OrderServiceClient, orderId: string, d
       received_on: input.receivedOn,
       picked_up_on: input.pickedUpOn,
     })
+    .eq('id', orderId)
+  if (error) throw error
+}
+
+export async function deleteOrder(client: OrderDeletionClient, orderId: string) {
+  const { data: attachments, error: attachmentsError } = await client
+    .from('repair_order_attachments')
+    .select('storage_path')
+    .eq('repair_order_id', orderId)
+  if (attachmentsError) throw attachmentsError
+
+  const storagePaths = (attachments ?? []).map((attachment: { storage_path: string }) => attachment.storage_path)
+  if (storagePaths.length) {
+    const { error: storageError } = await client.storage.from('order-attachments').remove(storagePaths)
+    if (storageError) throw storageError
+  }
+
+  const { error } = await client
+    .from('repair_orders')
+    .delete()
     .eq('id', orderId)
   if (error) throw error
 }

@@ -37,7 +37,7 @@ describe('order service customer identity', () => {
 
     await createOrder(supabase, 'user-id', { customerName: 'Ana', customerAddress: 'Nueva 123', customerPhone: '11 4444-5555', equipment: 'TV' })
 
-    expect(supabase.calls).toContainEqual(['customers.update', '', { full_name: 'Ana', address: 'Nueva 123', phone: '11 4444-5555' }])
+    expect(supabase.calls).toContainEqual(['customers.update', '', { full_name: 'Ana', address: 'Nueva 123', phone: '1144445555' }])
     expect(supabase.calls).toContainEqual(['orders.insert', '', expect.objectContaining({ customer_id: 'customer-id', created_by: 'user-id' })])
   })
 
@@ -58,4 +58,52 @@ describe('order service customer identity', () => {
     expect(supabase.calls).not.toContainEqual(['customers.insert', '', expect.anything()])
     expect(supabase.calls).toContainEqual(['orders.update', '', expect.objectContaining({ customer_id: 'existing-customer' })])
   })
+})
+
+function fakeDeleteSupabase() {
+  const calls: Array<[string, unknown]> = []
+  const attachments = {
+    select: () => attachments,
+    eq: async (column: string, value: string) => {
+      calls.push(['attachments.eq', { column, value }])
+      return { data: [{ storage_path: 'order-id/photo.jpg' }, { storage_path: 'order-id/receipt.pdf' }], error: null }
+    },
+  }
+  const orders = {
+    delete: () => orders,
+    eq: async (column: string, value: string) => {
+      calls.push(['orders.eq', { column, value }])
+      return { error: null }
+    },
+  }
+  const storage = {
+    from: (bucket: string) => ({
+      remove: async (paths: string[]) => {
+        calls.push(['storage.remove', { bucket, paths }])
+        return { error: null }
+      },
+    }),
+  }
+  return {
+    calls,
+    from: (table: string) => table === 'repair_order_attachments' ? attachments : orders,
+    storage,
+  }
+}
+
+it('removes attachment files before permanently deleting an order', async () => {
+  const service = await import('./order-service') as Record<string, unknown>
+  const deleteOrder = service.deleteOrder as ((client: ReturnType<typeof fakeDeleteSupabase>, orderId: string) => Promise<void>) | undefined
+  const supabase = fakeDeleteSupabase()
+
+  expect(deleteOrder).toBeTypeOf('function')
+  if (!deleteOrder) return
+
+  await deleteOrder(supabase, 'order-id')
+
+  expect(supabase.calls).toEqual([
+    ['attachments.eq', { column: 'repair_order_id', value: 'order-id' }],
+    ['storage.remove', { bucket: 'order-attachments', paths: ['order-id/photo.jpg', 'order-id/receipt.pdf'] }],
+    ['orders.eq', { column: 'id', value: 'order-id' }],
+  ])
 })

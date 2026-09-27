@@ -22,9 +22,16 @@ const fieldOrder: OrderField[] = [
   'reportedFault', 'resolution', 'budget', 'status', 'receivedOn', 'pickedUpOn',
 ]
 
+function localDateInputValue(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function initialValues(values: OrderFormValues): OrderDraft {
   return {
-    customerPhone: values.customerPhone ?? '',
+    customerPhone: (values.customerPhone ?? '').replace(/\D/g, ''),
     customerName: values.customerName ?? '',
     customerAddress: values.customerAddress ?? '',
     equipment: values.equipment ?? '',
@@ -38,20 +45,50 @@ function initialValues(values: OrderFormValues): OrderDraft {
   }
 }
 
-export function OrderForm({ action, values: suppliedValues = {}, error, submitLabel, mode }: OrderFormProps) {
-  const [values, setValues] = useState<OrderDraft>(() => initialValues(suppliedValues))
-  const [fieldErrors, setFieldErrors] = useState(() => validateOrderDraft(initialValues(suppliedValues)).fieldErrors)
+export function OrderForm({ action, values: suppliedValues = {}, error, submitLabel, confirmed = false, mode }: OrderFormProps) {
+  const initial = () => initialValues(suppliedValues)
+  const [values, setValues] = useState<OrderDraft>(initial)
+  const [fieldErrors, setFieldErrors] = useState(() => validateOrderDraft(initial()).fieldErrors)
   const [connectionError, setConnectionError] = useState('')
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(confirmed)
   const refs = useRef<Partial<Record<OrderField, HTMLElement | null>>>({})
+  const submitRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get('pending')
     if (fromUrl) setPendingId(fromUrl)
   }, [])
 
+  useEffect(() => {
+    if (mode === 'create') refs.current.customerPhone?.focus()
+  }, [mode])
+
+  useEffect(() => {
+    if (mode !== 'create') return
+    setValues((current) => {
+      if (current.receivedOn) return current
+      const next = { ...current, receivedOn: localDateInputValue() }
+      setFieldErrors(validateOrderDraft(next).fieldErrors)
+      return next
+    })
+  }, [mode])
+
+  useEffect(() => {
+    if (!confirmed) return
+    setShowSuccess(true)
+    const timer = window.setTimeout(() => {
+      const nextParams = new URLSearchParams(window.location.search)
+      nextParams.delete('saved')
+      setShowSuccess(false)
+      window.history.replaceState(null, '', nextParams.size ? `${window.location.pathname}?${nextParams.toString()}` : window.location.pathname)
+    }, 3000)
+    return () => window.clearTimeout(timer)
+  }, [confirmed])
+
   const change = (field: OrderField, value: string) => {
-    const next = { ...values, [field]: value }
+    const next = { ...values, [field]: field === 'customerPhone' ? value.replace(/\D/g, '') : value }
     setValues(next)
     setFieldErrors(validateOrderDraft(next).fieldErrors)
     setConnectionError('')
@@ -83,6 +120,10 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
   const focusNext = async (field: OrderField) => {
     const index = fieldOrder.indexOf(field)
     if (field === 'customerPhone') await lookupPhone()
+    if (field === 'pickedUpOn') {
+      submitRef.current?.focus()
+      return
+    }
     refs.current[fieldOrder[index + 1]]?.focus()
   }
 
@@ -113,7 +154,9 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
       if (!navigator.onLine) {
         event.preventDefault()
         setConnectionError('Se necesita conexión para guardar cambios en una orden existente.')
+        return
       }
+      setIsSubmitting(true)
       return
     }
 
@@ -123,6 +166,7 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
       return
     }
 
+    setIsSubmitting(true)
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -145,6 +189,8 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
         return
       }
       setConnectionError('No se pudo guardar la orden.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -166,7 +212,7 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
       {connectionError ? <p className="form-error" role="alert">{connectionError}</p> : null}
       <fieldset>
         <legend>Cliente</legend>
-        <label>Teléfono<input {...field('customerPhone')} onBlur={() => { void lookupPhone() }} inputMode="tel" />{fieldMessage('customerPhone')}</label>
+        <label>Teléfono<input {...field('customerPhone')} onBlur={() => { void lookupPhone() }} inputMode="numeric" pattern="[0-9]*" />{fieldMessage('customerPhone')}</label>
         <label>Nombre<input {...field('customerName')} />{fieldMessage('customerName')}</label>
         <label>Dirección<input {...field('customerAddress')} />{fieldMessage('customerAddress')}</label>
       </fieldset>
@@ -189,7 +235,7 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
         <label>Fecha de ingreso<input {...field('receivedOn')} type="date" />{fieldMessage('receivedOn')}</label>
         <label>Fecha de retiro<input {...field('pickedUpOn')} type="date" />{fieldMessage('pickedUpOn')}</label>
       </fieldset>
-      <button type="submit" disabled={disabled}>{submitLabel}</button>
+      <button ref={submitRef} type="submit" className={showSuccess ? 'is-success' : undefined} disabled={disabled || isSubmitting || showSuccess}>{isSubmitting ? 'Procesando…' : showSuccess ? `${mode === 'create' ? 'Orden guardada' : 'Cambios guardados'} ✓` : submitLabel}</button>
     </form>
   )
 }
