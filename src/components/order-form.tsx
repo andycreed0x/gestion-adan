@@ -4,7 +4,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 
 import { PendingOrderDetail } from '@/components/pending-order-detail'
 import { createBrowserOrderStore } from '@/lib/offline/order-store'
-import { orderStatuses, type OrderDraft, type OrderField, type OrderStatus, validateOrderDraft } from '@/lib/orders'
+import { orderStatusLabels, orderStatuses, type OrderDraft, type OrderField, type OrderStatus, validateOrderDraft } from '@/lib/orders'
 
 type OrderFormValues = OrderDraft
 
@@ -55,10 +55,17 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
   const [showSuccess, setShowSuccess] = useState(confirmed)
   const refs = useRef<Partial<Record<OrderField, HTMLElement | null>>>({})
   const submitRef = useRef<HTMLButtonElement | null>(null)
+  const printSubmitRef = useRef<HTMLButtonElement | null>(null)
+  const submitIntent = useRef<'save' | 'print'>('save')
+  const [pendingAutoPrint, setPendingAutoPrint] = useState(false)
 
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('pending')
-    if (fromUrl) setPendingId(fromUrl)
+    const params = new URLSearchParams(window.location.search)
+    const fromUrl = params.get('pending')
+    if (fromUrl) {
+      setPendingId(fromUrl)
+      setPendingAutoPrint(params.get('print') === '1')
+    }
   }, [])
 
   useEffect(() => {
@@ -121,28 +128,37 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
     const index = fieldOrder.indexOf(field)
     if (field === 'customerPhone') await lookupPhone()
     if (field === 'pickedUpOn') {
-      submitRef.current?.focus()
+      ;(mode === 'create' ? printSubmitRef.current : submitRef.current)?.focus()
       return
     }
     refs.current[fieldOrder[index + 1]]?.focus()
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>, field: OrderField) => {
-    if (event.key !== 'Enter' || event.ctrlKey || event.metaKey || event.altKey) return
+    const hasModifier = event.ctrlKey || event.metaKey || event.altKey
+    if ((field === 'receivedOn' || field === 'pickedUpOn') && (event.key === ' ' || event.key === 'Spacebar') && !hasModifier) {
+      event.preventDefault()
+      change(field, localDateInputValue())
+      return
+    }
+    if (event.key !== 'Enter' || hasModifier) return
     if ((field === 'reportedFault' || field === 'resolution') && event.shiftKey) return
     event.preventDefault()
     void focusNext(field)
   }
 
-  const enqueuePending = async () => {
+  const enqueuePending = async (autoPrint = false) => {
     const localId = crypto.randomUUID()
     await createBrowserOrderStore().enqueueCreate({ localId, createdAt: new Date().toISOString(), draft: values })
     navigator.serviceWorker?.controller?.postMessage({ type: 'CACHE_NEW_ORDER_ROUTE' })
-    window.history.replaceState(null, '', `/orders/new?pending=${localId}`)
+    window.history.replaceState(null, '', `/orders/new?pending=${localId}${autoPrint ? '&print=1' : ''}`)
+    setPendingAutoPrint(autoPrint)
     setPendingId(localId)
   }
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    const shouldPrint = mode === 'create' && submitIntent.current === 'print'
+    submitIntent.current = 'save'
     const validation = validateOrderDraft(values)
     setFieldErrors(validation.fieldErrors)
     if (Object.keys(validation.fieldErrors).length) {
@@ -162,7 +178,7 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
 
     event.preventDefault()
     if (!navigator.onLine) {
-      await enqueuePending()
+      await enqueuePending(shouldPrint)
       return
     }
 
@@ -182,10 +198,10 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
         setConnectionError(body.error ?? 'No se pudo guardar la orden.')
         return
       }
-      window.location.assign(`/orders/${body.id}?saved=1`)
+      window.location.assign(shouldPrint ? `/orders/${body.id}/print?autoPrint=1` : `/orders/${body.id}?saved=1`)
     } catch (caught) {
       if (caught instanceof TypeError) {
-        await enqueuePending()
+        await enqueuePending(shouldPrint)
         return
       }
       setConnectionError('No se pudo guardar la orden.')
@@ -194,7 +210,7 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
     }
   }
 
-  if (pendingId) return <PendingOrderDetail localId={pendingId} />
+  if (pendingId) return <PendingOrderDetail localId={pendingId} autoPrint={pendingAutoPrint} />
   const disabled = Object.keys(fieldErrors).length > 0
   const field = (name: OrderField) => ({
     name,
@@ -230,12 +246,15 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
       <fieldset>
         <legend>Estado</legend>
         <label>Estado
-          <select {...field('status')}>{orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}</select>{fieldMessage('status')}
+          <select {...field('status')}>{orderStatuses.map((status) => <option key={status} value={status}>{orderStatusLabels[status]}</option>)}</select>{fieldMessage('status')}
         </label>
         <label>Fecha de ingreso<input {...field('receivedOn')} type="date" />{fieldMessage('receivedOn')}</label>
         <label>Fecha de retiro<input {...field('pickedUpOn')} type="date" />{fieldMessage('pickedUpOn')}</label>
       </fieldset>
-      <button ref={submitRef} type="submit" className={showSuccess ? 'is-success' : undefined} disabled={disabled || isSubmitting || showSuccess}>{isSubmitting ? 'Procesando…' : showSuccess ? `${mode === 'create' ? 'Orden guardada' : 'Cambios guardados'} ✓` : submitLabel}</button>
+      <div className="order-form-actions">
+        {mode === 'create' ? <button ref={printSubmitRef} type="submit" onClick={() => { submitIntent.current = 'print' }} disabled={disabled || isSubmitting || showSuccess}>{isSubmitting ? 'Procesando…' : 'Guardar e Imprimir'}</button> : null}
+        <button ref={submitRef} type="submit" onClick={() => { submitIntent.current = 'save' }} className={showSuccess ? 'is-success' : undefined} disabled={disabled || isSubmitting || showSuccess}>{isSubmitting ? 'Procesando…' : showSuccess ? `${mode === 'create' ? 'Orden guardada' : 'Cambios guardados'} ✓` : submitLabel}</button>
+      </div>
     </form>
   )
 }

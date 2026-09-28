@@ -18,5 +18,7 @@ describe('OrderTable', () => {
 
     expect(screen.getByRole('button', { name: 'Borrar orden #9380' }).tagName).toBe('BUTTON')
     expect(screen.queryByRole('button', { name: /Borrar orden pendiente/i })).toBeNull()
+    expect(screen.getByText('Recibida')).toBeTruthy()
+    expect(screen.getAllByText('Pendiente')).toHaveLength(2)
   })
 })

@@ -1,7 +1,7 @@
 import { OrdersWorkspace } from '@/components/orders-workspace'
 import { deleteOrderAction } from '@/app/(app)/orders/actions'
 import { orderListHref, parseOrderListSearchParams, queryOrderPage } from '@/lib/order-list'
-import { orderStatuses } from '@/lib/orders'
+import { orderStatusLabels, orderStatuses } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type OrdersPageProps = {
@@ -28,7 +28,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
       <div className="page-heading"><div><p className="eyebrow">Operación diaria</p><h1>Órdenes de reparación</h1></div><a className="button" href="/orders/new">Nueva orden</a></div>
       <form className="search-form">
         <input name="q" defaultValue={filters.q} placeholder="Buscar por número, cliente, teléfono o equipo" />
-        <select name="status" defaultValue={filters.status}><option value="">Todos los estados</option>{orderStatuses.map((option) => <option key={option} value={option}>{option}</option>)}</select>
+        <select name="status" defaultValue={filters.status}><option value="">Todos los estados</option>{orderStatuses.map((option) => <option key={option} value={option}>{orderStatusLabels[option]}</option>)}</select>
         <label>Desde<input name="receivedFrom" type="date" defaultValue={filters.receivedFrom} /></label>
         <label>Hasta<input name="receivedTo" type="date" defaultValue={filters.receivedTo} /></label>
         <button type="submit">Filtrar</button>

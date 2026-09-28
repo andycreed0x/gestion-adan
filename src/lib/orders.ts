@@ -12,6 +12,14 @@ export const orderStatuses = [
 
 export type OrderStatus = (typeof orderStatuses)[number]
 
+export const orderStatusLabels: Record<OrderStatus, string> = {
+  received: 'Recibida',
+  in_progress: 'En reparación',
+  ready: 'Lista para retirar',
+  picked_up: 'Retirada',
+  cancelled: 'Cancelada',
+}
+
 export type RepairOrderInput = {
   customerName: string
   customerAddress: string

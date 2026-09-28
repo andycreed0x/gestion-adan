@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildWhatsAppOrderUrl } from './order-share'
+import { formatCurrency } from './orders'
 
 const order = {
   persistence: 'persisted' as const,
@@ -25,10 +26,12 @@ describe('WhatsApp order sharing', () => {
     expect(url?.host).toBe('wa.me')
     expect(url?.pathname).toBe('/1144445555')
     const message = url?.searchParams.get('text') ?? ''
-    expect(message).toContain('Orden #9380')
-    for (const value of ['Ana Pérez', 'Rivadavia 123', '11 4444-5555', 'TV Samsung', 'Control remoto', 'No enciende', 'Pendiente', 'ready', '2026-09-26', '2026-09-27', '$']) {
-      expect(message).toContain(value)
-    }
+    expect(message).toBe(
+      'Hola Ana Pérez! 👋 Te escribimos de Servicio Técnico ADAN.\n\n'
+      + 'Te pasamos el presupuesto de tu equipo (TV Samsung) correspondiente a la Orden #9380:\n'
+      + `💰 Presupuesto: ${formatCurrency(125000)}\n\n`
+      + 'Por favor, avísanos si estás de acuerdo para avanzar con la reparación. ¡Muchas gracias!',
+    )
   })
 
   it('refuses pending or phone-less orders', () => {

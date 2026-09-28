@@ -21,19 +21,14 @@ export function buildWhatsAppOrderUrl(order: ShareableOrder): URL | null {
   const phone = normalizeArgentinePhone(order.customerPhone)
   if (order.persistence !== 'persisted' || !order.orderNumber || !phone) return null
 
+  const customer = order.customerName.trim() || 'cliente'
   const message = [
-    `Orden #${order.orderNumber}`,
-    `Cliente: ${order.customerName}`,
-    `Teléfono: ${order.customerPhone}`,
-    `Dirección: ${order.customerAddress}`,
-    `Equipo: ${order.equipment}`,
-    `Accesorios: ${order.accessories}`,
-    `Falla: ${order.reportedFault}`,
-    `Resolución: ${order.resolution}`,
-    `Presupuesto: ${formatCurrency(order.budgetCents)}`,
-    `Estado: ${order.status}`,
-    `Fecha de ingreso: ${order.receivedOn}`,
-    `Fecha de retiro: ${order.pickedUpOn ?? 'Pendiente'}`,
+    `Hola ${customer}! 👋 Te escribimos de Servicio Técnico ADAN.`,
+    '',
+    `Te pasamos el presupuesto de tu equipo (${order.equipment}) correspondiente a la Orden #${order.orderNumber}:`,
+    `💰 Presupuesto: ${formatCurrency(order.budgetCents)}`,
+    '',
+    'Por favor, avísanos si estás de acuerdo para avanzar con la reparación. ¡Muchas gracias!',
   ].join('\n')
 
   const url = new URL(`https://wa.me/${phone}`)
