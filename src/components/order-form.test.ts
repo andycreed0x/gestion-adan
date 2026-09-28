@@ -72,7 +72,7 @@ describe('OrderForm', () => {
     renderCreateForm()
     const phone = screen.getByRole('textbox', { name: /^Teléfono/ }) as HTMLInputElement
     const pickupDate = screen.getByLabelText('Fecha de retiro')
-    const save = screen.getByRole('button', { name: 'Guardar orden' })
+    const saveAndPrint = screen.getByRole('button', { name: 'Guardar e Imprimir' })
 
     fireEvent.change(phone, { target: { value: '2345-2345' } })
     fireEvent.change(screen.getByRole('textbox', { name: /^Nombre/ }), { target: { value: 'Ana' } })
@@ -81,8 +81,46 @@ describe('OrderForm', () => {
 
     pickupDate.focus()
     fireEvent.keyDown(pickupDate, { key: 'Enter' })
-    await waitFor(() => expect(document.activeElement).toBe(save))
+    await waitFor(() => expect(document.activeElement).toBe(saveAndPrint))
   })
+
+
+  it('fills an empty pickup date with today when Space is pressed during an update', () => {
+    renderUpdateForm()
+    const pickupDate = screen.getByLabelText('Fecha de retiro') as HTMLInputElement
+    const today = new Date()
+    const expected = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    expect(pickupDate.value).toBe('')
+    pickupDate.focus()
+    fireEvent.keyDown(pickupDate, { key: ' ' })
+
+    expect(pickupDate.value).toBe(expected)
+  })
+
+  it('offers Guardar e Imprimir first and focuses it after Enter from pickup date', async () => {
+    renderCreateForm()
+    const pickupDate = screen.getByLabelText('Fecha de retiro')
+    const saveAndPrint = screen.getByRole('button', { name: 'Guardar e Imprimir' })
+    const save = screen.getByRole('button', { name: 'Guardar orden' })
+
+    fireEvent.change(screen.getByRole('textbox', { name: /^Nombre/ }), { target: { value: 'Ana' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^Tipo \/ marca \/ modelo/ }), { target: { value: 'TV' } })
+    expect(saveAndPrint.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    pickupDate.focus()
+    fireEvent.keyDown(pickupDate, { key: 'Enter' })
+
+    await waitFor(() => expect(document.activeElement).toBe(saveAndPrint))
+  })
+
+  it('shows Spanish labels while keeping the internal status values', () => {
+    renderCreateForm()
+
+    const received = screen.getByRole('option', { name: 'Recibida' }) as HTMLOptionElement
+    expect(received.value).toBe('received')
+    expect((screen.getByRole('option', { name: 'En reparación' }) as HTMLOptionElement).value).toBe('in_progress')
+  })
+
 
   it('shows processing while an online create request is in flight', async () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => undefined)))
@@ -93,7 +131,7 @@ describe('OrderForm', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /^Tipo \/ marca \/ modelo/ }), { target: { value: 'TV' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Guardar orden' }).closest('form')!)
 
-    expect((await screen.findByRole('button', { name: 'Procesando…' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((await screen.findAllByRole('button', { name: 'Procesando…' })).every((button) => (button as HTMLButtonElement).disabled)).toBe(true)
   })
 
   it('shows processing while an online update request is in flight', async () => {

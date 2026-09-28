@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { buildOrderTicketLines } from '@/lib/order-ticket'
 import { createBrowserOrderStore } from '@/lib/offline/order-store'
@@ -19,9 +19,10 @@ async function postPendingOrder(pending: PendingCreate) {
     : { ok: false as const, error: Object.values(body.fieldErrors ?? {})[0] || body.error || 'No se pudo sincronizar la orden' }
 }
 
-export function PendingOrderDetail({ localId }: { localId: string }) {
+export function PendingOrderDetail({ localId, autoPrint = false }: { localId: string; autoPrint?: boolean }) {
   const [pending, setPending] = useState<PendingCreate | null>(null)
   const [missing, setMissing] = useState(false)
+  const hasAutoPrinted = useRef(false)
 
   const refresh = async () => {
     const store = createBrowserOrderStore()
@@ -42,6 +43,12 @@ export function PendingOrderDetail({ localId }: { localId: string }) {
     window.addEventListener('adan-offline-sync', refresh)
     return () => window.removeEventListener('adan-offline-sync', refresh)
   }, [localId])
+
+  useEffect(() => {
+    if (!autoPrint || !pending || hasAutoPrinted.current) return
+    hasAutoPrinted.current = true
+    window.print()
+  }, [autoPrint, pending])
 
   if (missing) return <p className="form-error">No se encontró la orden pendiente en este navegador.</p>
   if (!pending) return <p className="muted">Cargando orden pendiente…</p>

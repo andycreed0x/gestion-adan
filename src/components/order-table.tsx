@@ -1,6 +1,6 @@
 'use client'
 
-import { formatCurrency } from '@/lib/orders'
+import { formatCurrency, orderStatusLabels, type OrderStatus } from '@/lib/orders'
 
 export type PersistedOrderRow = {
   persistence?: 'persisted'
@@ -44,7 +44,7 @@ export function OrderTable({ orders, deleteAction }: OrderTableProps) {
               <td>{order.persistence === 'pending' ? <a href={`/orders/new?pending=${order.localId}`}>Pendiente</a> : <a href={`/orders/${order.id}`}>#{order.order_number}</a>}</td>
               <td>{order.customers?.full_name ?? 'Sin cliente'}<br /><small>{order.customers?.phone}</small></td>
               <td>{order.equipment}</td>
-              <td><span className={`status status-${order.status}`}>{order.persistence === 'pending' ? 'pendiente' : order.status}</span></td>
+              <td><span className={`status status-${order.status}`}>{order.persistence === 'pending' ? 'Pendiente' : orderStatusLabels[order.status as OrderStatus]}</span></td>
               <td>{formatCurrency(order.budget_cents)}</td>
               <td>{order.received_on}</td>
               <td>{order.persistence === 'pending' || !deleteAction ? null : <form action={deleteAction} onSubmit={(event) => {

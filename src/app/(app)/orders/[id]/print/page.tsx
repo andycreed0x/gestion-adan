@@ -6,10 +6,10 @@ import { buildOrderTicketLines } from '@/lib/order-ticket'
 import { type OrderStatus } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-type PrintPageProps = { params: Promise<{ id: string }> }
+type PrintPageProps = { params: Promise<{ id: string }>; searchParams: Promise<{ autoPrint?: string }> }
 
-export default async function PrintOrderPage({ params }: PrintPageProps) {
-  const { id } = await params
+export default async function PrintOrderPage({ params, searchParams }: PrintPageProps) {
+  const [{ id }, { autoPrint }] = await Promise.all([params, searchParams])
   const supabase = await createServerSupabaseClient()
   const { data: order } = await supabase
     .from('repair_orders')
@@ -21,7 +21,7 @@ export default async function PrintOrderPage({ params }: PrintPageProps) {
 
   return (
     <main className="ticket-page">
-      <div className="ticket-actions"><PrintButton /></div>
+      <div className="ticket-actions"><PrintButton autoPrint={autoPrint === '1'} /></div>
       <article className="ticket">
         <header><h1>SERVICIO TÉCNICO ADAN</h1><p>25 de Mayo 1231, San Fernando · Tel: (011) 4744-7009</p></header>
         <h2>Orden de reparación #{order.order_number}</h2>
