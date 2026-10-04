@@ -1,4 +1,4 @@
-import { formatCurrency, orderStatusLabels, type OrderStatus } from './orders'
+import { orderStatusLabels, type OrderStatus } from './orders'
 
 type TicketFields = {
   customerName: string
@@ -21,7 +21,6 @@ export type OrderTicket = TicketFields & (
 
 export function buildOrderTicketLines(ticket: OrderTicket): string[] {
   const lines = [
-    'ORDEN DE REPARACIÓN',
     ...(ticket.persistence === 'persisted' ? [`N° Orden: ${ticket.orderNumber}`] : ['Pendiente de sincronización']),
     `Cliente: ${ticket.customerName}`,
     `Dirección: ${ticket.customerAddress}`,
@@ -30,7 +29,6 @@ export function buildOrderTicketLines(ticket: OrderTicket): string[] {
     `Accesorios: ${ticket.accessories}`,
     `Falla reportada: ${ticket.reportedFault}`,
     `Resolución: ${ticket.resolution}`,
-    `Presupuesto: ${formatCurrency(ticket.budgetCents)}`,
     `Estado: ${orderStatusLabels[ticket.status]}`,
     `Fecha de ingreso: ${ticket.receivedOn}`,
     `Fecha de retiro: ${ticket.pickedUpOn ?? ''}`,

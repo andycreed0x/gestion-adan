@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { notFound } from 'next/navigation'
 
 import { PrintButton } from '@/components/print-button'
+import { OrderTicketFooter, OrderTicketHeader } from '@/components/order-ticket-layout'
 import { buildOrderTicketLines } from '@/lib/order-ticket'
 import { type OrderStatus } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
@@ -23,10 +24,9 @@ export default async function PrintOrderPage({ params, searchParams }: PrintPage
     <main className="ticket-page">
       <div className="ticket-actions"><PrintButton autoPrint={autoPrint === '1'} /></div>
       <article className="ticket">
-        <header><h1>SERVICIO TÉCNICO ADAN</h1><p>25 de Mayo 1231, San Fernando · Tel: (011) 4744-7009</p></header>
-        <h2>Orden de reparación #{order.order_number}</h2>
+        <OrderTicketHeader />
         <dl>{buildOrderTicketLines({ persistence: 'persisted', orderNumber: order.order_number, customerName: customer?.full_name ?? '', customerAddress: customer?.address ?? '', customerPhone: customer?.phone ?? '', equipment: order.equipment, accessories: order.accessories, reportedFault: order.reported_fault, resolution: order.resolution, budgetCents: order.budget_cents, status: order.status as OrderStatus, receivedOn: order.received_on, pickedUpOn: order.picked_up_on ?? null }).map((line) => { const [label, value = '—'] = line.split(': ', 2); return <Fragment key={line}><dt>{label}</dt><dd>{value}</dd></Fragment> })}</dl>
-        <footer>Validez del presupuesto: 30 días corridos. Pasados los 90 días sin retiro, el equipo se considera abandonado.</footer>
+        <OrderTicketFooter />
       </article>
     </main>
   )
