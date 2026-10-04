@@ -1,7 +1,8 @@
 /* @vitest-environment jsdom */
 
+import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import PrintOrderPage from '@/app/(app)/orders/[id]/print/page'
@@ -27,7 +28,9 @@ const terms = [
   'Las reparaciones tienen 2 meses de garantía sobre lo reparado.',
 ]
 
-async function renderPersistedOrder() {
+const appStyles = readFileSync('src/app/globals.css', 'utf8')
+
+async function renderPersistedOrder(searchParams: { autoPrint?: string } = { autoPrint: '0' }) {
   const query = {
     select: () => query,
     eq: () => query,
@@ -47,7 +50,7 @@ async function renderPersistedOrder() {
   vi.mocked(createServerSupabaseClient).mockResolvedValue({ from: () => query } as unknown as Awaited<ReturnType<typeof createServerSupabaseClient>>)
   return render(await PrintOrderPage({
     params: Promise.resolve({ id: 'order-1234' }),
-    searchParams: Promise.resolve({}),
+    searchParams: Promise.resolve(searchParams),
   }))
 }
 
@@ -91,8 +94,49 @@ describe('printed order content', () => {
 
     expect(header?.textContent).toContain('Tel: (011) 4744-7009 · Whatsapp: 1158128304 (SOLO MENSAJES)')
     expect(header?.textContent).toContain('Lunes a viernes de 10 a 13 - 15.30 a 17.30')
+    expect(header!.querySelectorAll('p')).toHaveLength(1)
+    expect(header!.querySelector('p')?.textContent).toContain('(SOLO MENSAJES) - Lunes a viernes')
     expect(footer).not.toBeNull()
     expect(Array.from(footer!.querySelectorAll('p'), (paragraph) => paragraph.textContent)).toEqual(terms)
+  })
+
+  it.each([
+    ['persisted', renderPersistedOrder],
+    ['pending offline', renderPendingOrder],
+  ])('removes inter-paragraph margins from the terms of a %s order', async (_, renderOrder) => {
+    const style = document.createElement('style')
+    style.textContent = appStyles
+    document.head.appendChild(style)
+    try {
+      await renderOrder()
+      const paragraphs = screen.getByRole('article').querySelectorAll('footer p')
+
+      expect(paragraphs).toHaveLength(3)
+      for (const paragraph of paragraphs) {
+        const computed = window.getComputedStyle(paragraph)
+        expect(computed.marginBlock).toBe('0px')
+      }
+    } finally {
+      style.remove()
+    }
+  })
+
+  it('opens the browser print dialog on entering the ticket route without a second click', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    await renderPersistedOrder({})
+
+    expect(print).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('1234')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Imprimir' }))
+    expect(print).toHaveBeenCalledTimes(2)
+  })
+
+  it('allows opening the ticket without automatic printing when explicitly disabled', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    await renderPersistedOrder({ autoPrint: '0' })
+
+    expect(print).not.toHaveBeenCalled()
+    expect(screen.getByRole('article')).toBeTruthy()
   })
 
   it('keeps offline orders pending without inventing an official number or printing the budget', async () => {

@@ -2,8 +2,7 @@ export function OrderTicketHeader() {
   return (
     <header>
       <h1>SERVICIO TÉCNICO ADAN</h1>
-      <p>25 de Mayo 1231, San Fernando · Tel: (011) 4744-7009 · Whatsapp: 1158128304 (SOLO MENSAJES)</p>
-      <p>Lunes a viernes de 10 a 13 - 15.30 a 17.30</p>
+      <p>25 de Mayo 1231, San Fernando · Tel: (011) 4744-7009 · Whatsapp: 1158128304 (SOLO MENSAJES) - Lunes a viernes de 10 a 13 - 15.30 a 17.30</p>
     </header>
   )
 }
