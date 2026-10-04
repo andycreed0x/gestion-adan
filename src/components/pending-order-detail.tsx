@@ -7,6 +7,8 @@ import { createBrowserOrderStore } from '@/lib/offline/order-store'
 import { syncPendingOrders } from '@/lib/offline/sync'
 import type { PendingCreate } from '@/lib/offline/types'
 
+import { OrderTicketFooter, OrderTicketHeader } from './order-ticket-layout'
+
 async function postPendingOrder(pending: PendingCreate) {
   const response = await fetch('/api/orders', {
     method: 'POST',
@@ -78,7 +80,9 @@ export function PendingOrderDetail({ localId, autoPrint = false }: { localId: st
         }}>Reintentar sincronización</button>
       </div>
       <article className="ticket">
+        <OrderTicketHeader />
         {lines.map((line) => <p key={line}>{line}</p>)}
+        <OrderTicketFooter />
       </article>
       {pending.syncError ? <p className="form-error">{pending.syncError}</p> : <p className="muted">La orden todavía no se guardó en la base de datos.</p>}
     </section>
