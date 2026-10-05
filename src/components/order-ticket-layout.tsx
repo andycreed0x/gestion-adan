@@ -1,9 +1,29 @@
+import type { OrderTicketField } from '@/lib/order-ticket'
+
 export function OrderTicketHeader() {
   return (
     <header>
       <h1>SERVICIO TÉCNICO ADAN</h1>
       <p>25 de Mayo 1231, San Fernando · Tel: (011) 4744-7009 · Whatsapp: 1158128304 (SOLO MENSAJES) - Lunes a viernes de 10 a 13 - 15.30 a 17.30</p>
     </header>
+  )
+}
+
+export function OrderTicketFields({ rows }: { rows: OrderTicketField[][] }) {
+  return (
+    <table className="ticket-fields" aria-label="Datos de la orden">
+      <colgroup><col className="ticket-label-column" /><col /><col className="ticket-label-column" /><col /></colgroup>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.map((item) => item.label).join('-')}>
+            {row.flatMap((item) => [
+              <th key={`${item.label}-label`} scope="row">{item.label}</th>,
+              <td key={`${item.label}-value`} colSpan={row.length === 1 ? 3 : undefined}>{item.value}</td>,
+            ])}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 

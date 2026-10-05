@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-import { buildOrderTicketLines } from '@/lib/order-ticket'
+import { buildOrderTicketRows } from '@/lib/order-ticket'
 import { createBrowserOrderStore } from '@/lib/offline/order-store'
 import { syncPendingOrders } from '@/lib/offline/sync'
 import type { PendingCreate } from '@/lib/offline/types'
 
-import { OrderTicketFooter, OrderTicketHeader } from './order-ticket-layout'
+import { OrderTicketFields, OrderTicketFooter, OrderTicketHeader } from './order-ticket-layout'
 
 async function postPendingOrder(pending: PendingCreate) {
   const response = await fetch('/api/orders', {
@@ -55,7 +55,7 @@ export function PendingOrderDetail({ localId, autoPrint = false }: { localId: st
   if (missing) return <p className="form-error">No se encontró la orden pendiente en este navegador.</p>
   if (!pending) return <p className="muted">Cargando orden pendiente…</p>
 
-  const lines = buildOrderTicketLines({
+  const rows = buildOrderTicketRows({
     persistence: 'pending',
     customerName: pending.draft.customerName ?? '',
     customerAddress: pending.draft.customerAddress ?? '',
@@ -81,7 +81,7 @@ export function PendingOrderDetail({ localId, autoPrint = false }: { localId: st
       </div>
       <article className="ticket">
         <OrderTicketHeader />
-        {lines.map((line) => <p key={line}>{line}</p>)}
+        <OrderTicketFields rows={rows} />
         <OrderTicketFooter />
       </article>
       {pending.syncError ? <p className="form-error">{pending.syncError}</p> : <p className="muted">La orden todavía no se guardó en la base de datos.</p>}

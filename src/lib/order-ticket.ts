@@ -1,4 +1,4 @@
-import { orderStatusLabels, type OrderStatus } from './orders'
+import type { OrderStatus } from './orders'
 
 type TicketFields = {
   customerName: string
@@ -19,20 +19,17 @@ export type OrderTicket = TicketFields & (
   | { persistence: 'pending' }
 )
 
-export function buildOrderTicketLines(ticket: OrderTicket): string[] {
-  const lines = [
-    ...(ticket.persistence === 'persisted' ? [`N° Orden: ${ticket.orderNumber}`] : ['Pendiente de sincronización']),
-    `Cliente: ${ticket.customerName}`,
-    `Dirección: ${ticket.customerAddress}`,
-    `Teléfono: ${ticket.customerPhone}`,
-    `Equipo: ${ticket.equipment}`,
-    `Accesorios: ${ticket.accessories}`,
-    `Falla reportada: ${ticket.reportedFault}`,
-    `Resolución: ${ticket.resolution}`,
-    `Estado: ${orderStatusLabels[ticket.status]}`,
-    `Fecha de ingreso: ${ticket.receivedOn}`,
-    `Fecha de retiro: ${ticket.pickedUpOn ?? ''}`,
-  ]
+export type OrderTicketField = { label: string; value: string }
 
-  return lines.filter((line) => !line.endsWith(': '))
+function field(label: string, value: string): OrderTicketField {
+  return { label, value: value || '—' }
+}
+
+export function buildOrderTicketRows(ticket: OrderTicket): OrderTicketField[][] {
+  return [
+    [ticket.persistence === 'persisted' ? field('N° Orden', String(ticket.orderNumber)) : field('Orden', 'Pendiente de sincronización')],
+    [field('Cliente', ticket.customerName), field('Teléfono', ticket.customerPhone)],
+    [field('Equipo', ticket.equipment), field('Accesorios', ticket.accessories)],
+    [field('Falla reportada', ticket.reportedFault), field('Fecha de ingreso', ticket.receivedOn)],
+  ]
 }
