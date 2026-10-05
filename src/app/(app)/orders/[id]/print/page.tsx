@@ -1,9 +1,8 @@
-import { Fragment } from 'react'
 import { notFound } from 'next/navigation'
 
 import { PrintButton } from '@/components/print-button'
-import { OrderTicketFooter, OrderTicketHeader } from '@/components/order-ticket-layout'
-import { buildOrderTicketLines } from '@/lib/order-ticket'
+import { OrderTicketFields, OrderTicketFooter, OrderTicketHeader } from '@/components/order-ticket-layout'
+import { buildOrderTicketRows } from '@/lib/order-ticket'
 import { type OrderStatus } from '@/lib/orders'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -25,7 +24,7 @@ export default async function PrintOrderPage({ params, searchParams }: PrintPage
       <div className="ticket-actions"><PrintButton autoPrint={autoPrint !== '0'} /></div>
       <article className="ticket">
         <OrderTicketHeader />
-        <dl>{buildOrderTicketLines({ persistence: 'persisted', orderNumber: order.order_number, customerName: customer?.full_name ?? '', customerAddress: customer?.address ?? '', customerPhone: customer?.phone ?? '', equipment: order.equipment, accessories: order.accessories, reportedFault: order.reported_fault, resolution: order.resolution, budgetCents: order.budget_cents, status: order.status as OrderStatus, receivedOn: order.received_on, pickedUpOn: order.picked_up_on ?? null }).map((line) => { const [label, value = '—'] = line.split(': ', 2); return <Fragment key={line}><dt>{label}</dt><dd>{value}</dd></Fragment> })}</dl>
+        <OrderTicketFields rows={buildOrderTicketRows({ persistence: 'persisted', orderNumber: order.order_number, customerName: customer?.full_name ?? '', customerAddress: customer?.address ?? '', customerPhone: customer?.phone ?? '', equipment: order.equipment, accessories: order.accessories, reportedFault: order.reported_fault, resolution: order.resolution, budgetCents: order.budget_cents, status: order.status as OrderStatus, receivedOn: order.received_on, pickedUpOn: order.picked_up_on ?? null })} />
         <OrderTicketFooter />
       </article>
     </main>

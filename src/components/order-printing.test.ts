@@ -30,6 +30,11 @@ const terms = [
 
 const appStyles = readFileSync('src/app/globals.css', 'utf8')
 
+function printedRows() {
+  const table = screen.getByRole('table', { name: 'Datos de la orden' })
+  return Array.from(table.querySelectorAll('tr'), (row) => Array.from(row.children, (cell) => cell.textContent))
+}
+
 async function renderPersistedOrder(searchParams: { autoPrint?: string } = { autoPrint: '0' }) {
   const query = {
     select: () => query,
@@ -70,17 +75,22 @@ async function renderPendingOrder() {
 }
 
 describe('printed order content', () => {
-  it('shows the official number only among the fields, without repeated titles or a budget field', async () => {
+  it('prints the approved fields in two columns and omits status, address, resolution, pickup and budget', async () => {
     await renderPersistedOrder()
     const ticket = within(screen.getByRole('article'))
 
     expect(ticket.queryByRole('heading', { level: 2 })).toBeNull()
     expect(ticket.queryByText('ORDEN DE REPARACIÓN')).toBeNull()
-    expect(ticket.getAllByText('N° Orden')).toHaveLength(1)
-    expect(ticket.getByText('1234').tagName).toBe('DD')
-    expect(ticket.queryByText('Presupuesto')).toBeNull()
-    expect(ticket.getByText('Ana Pérez')).toBeTruthy()
-    expect(ticket.getByText('TV Samsung')).toBeTruthy()
+    expect(printedRows()).toEqual([
+      ['N° Orden', '1234'],
+      ['Cliente', 'Ana Pérez', 'Teléfono', '1144445555'],
+      ['Equipo', 'TV Samsung', 'Accesorios', 'Control remoto'],
+      ['Falla reportada', 'No enciende', 'Fecha de ingreso', '2026-10-04'],
+    ])
+    expect(screen.getByRole('cell', { name: '1234' }).getAttribute('colspan')).toBe('3')
+    for (const omitted of ['Estado', 'Recibida', 'Dirección', 'Rivadavia 123', 'Resolución', 'Reemplazar fuente', 'Fecha de retiro', 'Presupuesto']) {
+      expect(ticket.queryByText(omitted)).toBeNull()
+    }
   })
 
   it.each([
@@ -139,14 +149,39 @@ describe('printed order content', () => {
     expect(screen.getByRole('article')).toBeTruthy()
   })
 
-  it('keeps offline orders pending without inventing an official number or printing the budget', async () => {
+  it('prints a pending offline order with the same two-column table without an official number', async () => {
     await renderPendingOrder()
     const ticket = within(screen.getByRole('article'))
 
-    expect(ticket.getByText('Pendiente de sincronización')).toBeTruthy()
     expect(ticket.queryByText(/N° Orden/)).toBeNull()
     expect(ticket.queryByText('ORDEN DE REPARACIÓN')).toBeNull()
-    expect(ticket.queryByText(/^Presupuesto:/)).toBeNull()
-    expect(ticket.getByText('Cliente: Ana Pérez')).toBeTruthy()
+    expect(printedRows()).toEqual([
+      ['Orden', 'Pendiente de sincronización'],
+      ['Cliente', 'Ana Pérez', 'Teléfono', '1144445555'],
+      ['Equipo', 'TV Samsung', 'Accesorios', '—'],
+      ['Falla reportada', '—', 'Fecha de ingreso', '2026-10-04'],
+    ])
+    for (const omitted of ['Estado', 'Recibida', 'Dirección', 'Rivadavia 123', 'Resolución', 'Fecha de retiro', 'Presupuesto']) {
+      expect(ticket.queryByText(omitted)).toBeNull()
+    }
+  })
+
+  it.each([
+    ['persisted', renderPersistedOrder],
+    ['pending offline', renderPendingOrder],
+  ])('lays out a %s ticket table with fixed label and value columns for print', async (_, renderOrder) => {
+    const style = document.createElement('style')
+    style.textContent = appStyles
+    document.head.appendChild(style)
+    try {
+      await renderOrder()
+      const table = screen.getByRole('table', { name: 'Datos de la orden' })
+
+      expect(window.getComputedStyle(table).width).toBe('100%')
+      expect(window.getComputedStyle(table).tableLayout).toBe('fixed')
+      expect(table.querySelectorAll('col')).toHaveLength(4)
+    } finally {
+      style.remove()
+    }
   })
 })
