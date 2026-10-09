@@ -101,6 +101,82 @@ npx supabase@2.117.0 migration list --db-url "$SUPABASE_DB_URL"
 npx supabase@2.117.0 db advisors --db-url "$SUPABASE_DB_URL" --type all
 ~~~
 
+## Backup diario en esta PC
+
+El backup incluye roles, esquema y datos de `public`, `private`, `auth` y
+`storage`, el estado de las secuencias y los archivos del bucket
+`order-attachments`. Se guarda en `backups/backup-AAAA-MM-DD.tar.gz`, con fecha
+de Argentina. La carpeta está excluida de Git y tiene permisos privados.
+
+### Ejecutar y comprobar
+
+Requiere Node.js 22+, dependencias instaladas, Docker funcionando y los comandos
+`npx`, `tar` y `flock`. El script usa Supabase CLI 2.117.0 y carga el `.env` del
+repositorio; no necesita `supabase login` ni que la aplicación esté abierta.
+
+Configurá `SUPABASE_DB_URL` con la conexión **Session Pooler** que aparece en
+Supabase → Connect, incluyendo la contraseña y `sslmode=require`. Usá además
+`SUPABASE_URL` (o `NEXT_PUBLIC_SUPABASE_URL`) y `SUPABASE_SECRET_KEY` del mismo
+proyecto. No copies esas credenciales a scripts o al crontab.
+
+~~~bash
+npm run backup
+npm run test:backup
+ls -lh backups/backup-*.tar.gz
+tar -tzf backups/backup-AAAA-MM-DD.tar.gz
+~~~
+
+Cada archivo contiene `database/roles.sql`, `database/schema.sql`,
+`database/data.sql`, `storage/` y `manifest.json`. El manifiesto relaciona los
+archivos con sus rutas originales y contiene tamaños y hashes SHA-256. Los
+archivos SQL también tienen hashes. Los respaldos contienen datos personales y
+de autenticación: no los publiques ni los adjuntes a un PR.
+
+### Horario y retención
+
+El cron de `senshi` ejecuta el script diariamente a las **23:59 de Argentina**.
+Esta PC usa UTC, por lo que la expresión es `59 2 * * *` del día siguiente:
+
+~~~cron
+59 2 * * * PATH=/usr/local/bin:/usr/bin:/bin /usr/bin/node /home/senshi/projects/gestion-adan/scripts/backup-daily.mjs >> /home/senshi/projects/gestion-adan/backups/backup.log 2>&1
+~~~
+
+La PC, Docker y la conexión a Internet deben estar disponibles. Si la PC está
+apagada, cron omite esa ejecución; podés correr `npm run backup` al encenderla.
+Si cambia la zona horaria de la PC, hay que ajustar el cron.
+
+Se conserva el día actual y los seis días anteriores según Argentina. La
+limpieza ocurre **solo después de completar un respaldo válido**. Si falla la
+base o un adjunto, se mantienen las copias anteriores. Repetir el backup de un
+día reemplaza su archivo solo cuando termina la nueva copia. `flock` impide que
+cron y una ejecución manual se superpongan.
+
+~~~bash
+crontab -l
+tail -n 30 backups/backup.log
+~~~
+
+### Recuperación manual
+
+Extraé la copia en una carpeta privada y verificá los hashes del manifiesto
+antes de usarla. Probá primero en un proyecto Supabase de prueba, nunca
+restaures sobre producción sin revisar el alcance y guardar una copia actual.
+El script no ejecuta restauraciones.
+
+Los SQL incluyen definiciones de `auth` y `storage`: no deben aplicarse a ciegas
+sobre los esquemas administrados de otro proyecto. Adaptá la restauración a su
+versión y esquema, recuperá roles, estructura y datos, y conservá los valores
+`setval` de las secuencias. Reponé los adjuntos **por la API de Storage**, usando
+el bucket, las rutas y los tipos de contenido del manifiesto; copiar solamente
+los registros SQL de Storage no repone los archivos físicos.
+
+Es un respaldo lógico, no una copia de toda la plataforma ni un snapshot
+atómico entre PostgreSQL y Storage. No incluye `.env`, claves de API,
+configuración externa o secretos de servicios. Evitá migraciones y cambios
+masivos de archivos durante el backup. Una copia en esta misma PC no protege
+frente a pérdida del disco: guardá otra copia fuera de ella si necesitás cubrir
+ese riesgo.
+
 ## Importación histórica por terminal
 
 El importador revisa el archivo del programa anterior y genera JSON sin insertar

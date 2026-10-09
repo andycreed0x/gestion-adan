@@ -30,5 +30,8 @@ skills-lock.json
 # Local operator credentials; never commit.
 secrets/
 
+# Daily database and attachment backups contain private data.
+/backups/
+
 __pycache__/
 *.py[cod]

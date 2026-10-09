@@ -1,6 +1,8 @@
 {
   "name": "gestion-adan",
   "scripts": {
+    "backup": "node scripts/backup-daily.mjs",
+    "test:backup": "node --test scripts/backup-daily.test.mjs",
     "test": "vitest run",
     "dev": "next dev",
     "build": "next build",
