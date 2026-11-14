@@ -29,7 +29,21 @@ export type PendingCreate = {
 
 export type PersistedOrder = { id: string; orderNumber: number }
 
+export type OfflineIdentityMetadata = { ownerId: string; sessionId: string; expiresAt: number }
+
+export type OfflineSnapshot = {
+  schemaVersion: 1
+  ownerId: string
+  windowStart: string
+  generatedAt: string
+  orders: CachedOrder[]
+}
+
 export type OrderStore = {
+  getRecentSnapshot: () => Promise<OfflineSnapshot | null>
+  replaceRecentSnapshot: (snapshot: OfflineSnapshot) => Promise<void>
+  getSnapshotFreshness: () => Promise<number>
+  invalidateSnapshot: () => Promise<void>
   putRecentPage: (orders: CachedOrder[]) => Promise<void>
   putOrder: (order: CachedOrder) => Promise<void>
   getOrder: (id: string) => Promise<CachedOrder | null>

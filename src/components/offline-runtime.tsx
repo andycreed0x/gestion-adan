@@ -2,41 +2,40 @@
 
 import { useEffect } from 'react'
 
-import { createBrowserOrderStore } from '@/lib/offline/order-store'
-import { syncPendingOrders } from '@/lib/offline/sync'
+import { initializeOfflineIdentity, observeOfflineIdentity, prepareOfflineShell, refreshOfflineSnapshot, syncBrowserPending } from '@/lib/offline/browser-runtime'
+import { getActiveBrowserOwner } from '@/lib/offline/order-store'
+import type { OfflineIdentityMetadata } from '@/lib/offline/types'
 
-async function postPendingOrder(pending: { draft: Record<string, string | undefined> }) {
-  const response = await fetch('/api/orders', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(pending.draft),
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const fieldError = body.fieldErrors ? Object.values(body.fieldErrors)[0] : null
-    return { ok: false as const, error: fieldError || body.error || 'No se pudo sincronizar la orden' }
-  }
-  return { ok: true as const, order: { id: body.id as string, orderNumber: body.order_number as number } }
-}
-
-export function OfflineRuntime() {
+export function OfflineRuntime({ ownerId, initialIdentity }: { ownerId?: string; initialIdentity?: OfflineIdentityMetadata }) {
   useEffect(() => {
-    const store = createBrowserOrderStore()
-    const sync = async () => {
-      if (!navigator.onLine) return
-      await syncPendingOrders(store, postPendingOrder)
-      window.dispatchEvent(new Event('adan-offline-sync'))
+    let stopped = false
+    let serverIdentity = initialIdentity
+    const stopObserving = observeOfflineIdentity()
+    const run = async () => {
+      if (!navigator.onLine || stopped) return
+      try {
+        const verifiedRenderIdentity = serverIdentity
+        serverIdentity = undefined
+        await initializeOfflineIdentity(ownerId ?? getActiveBrowserOwner() ?? undefined, verifiedRenderIdentity)
+        if (stopped) return
+        await syncBrowserPending()
+        if (window.location.pathname === '/orders') await refreshOfflineSnapshot()
+        if (stopped) return
+        await prepareOfflineShell()
+        if (!stopped) window.dispatchEvent(new Event('adan-offline-ready'))
+      } catch (error) {
+        if (!stopped) window.dispatchEvent(new CustomEvent('adan-offline-error', { detail: error instanceof Error ? error.message : 'Preparación offline incompleta' }))
+      }
     }
-
-    if ('serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('/order-offline-sw.js').then((registration) => {
-        registration.active?.postMessage({ type: 'CACHE_NEW_ORDER_ROUTE' })
-      })
+    void run()
+    window.addEventListener('online', run)
+    window.addEventListener('focus', run)
+    return () => {
+      stopped = true
+      stopObserving()
+      window.removeEventListener('online', run)
+      window.removeEventListener('focus', run)
     }
-    void sync()
-    window.addEventListener('online', sync)
-    return () => window.removeEventListener('online', sync)
-  }, [])
-
+  }, [ownerId, initialIdentity?.sessionId, initialIdentity?.expiresAt])
   return null
 }

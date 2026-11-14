@@ -4,6 +4,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 
 
 import { PendingOrderDetail } from '@/components/pending-order-detail'
 import { createBrowserOrderStore } from '@/lib/offline/order-store'
+import { invalidateBrowserSnapshot } from '@/lib/offline/browser-runtime'
 import { orderStatusLabels, orderStatuses, type OrderDraft, type OrderField, type OrderStatus, validateOrderDraft } from '@/lib/orders'
 
 type OrderFormValues = OrderDraft
@@ -150,7 +151,6 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
   const enqueuePending = async (autoPrint = false) => {
     const localId = crypto.randomUUID()
     await createBrowserOrderStore().enqueueCreate({ localId, createdAt: new Date().toISOString(), draft: values })
-    navigator.serviceWorker?.controller?.postMessage({ type: 'CACHE_NEW_ORDER_ROUTE' })
     window.history.replaceState(null, '', `/orders/new?pending=${localId}${autoPrint ? '&print=1' : ''}`)
     setPendingAutoPrint(autoPrint)
     setPendingId(localId)
@@ -178,7 +178,7 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
 
     event.preventDefault()
     if (!navigator.onLine) {
-      await enqueuePending(shouldPrint)
+      try { await enqueuePending(shouldPrint) } catch (error) { setConnectionError(error instanceof Error ? error.message : 'No se pudo guardar en este navegador') }
       return
     }
 
@@ -198,10 +198,11 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
         setConnectionError(body.error ?? 'No se pudo guardar la orden.')
         return
       }
+      await invalidateBrowserSnapshot().catch(() => {})
       window.location.assign(shouldPrint ? `/orders/${body.id}/print?autoPrint=1` : `/orders/${body.id}?saved=1`)
     } catch (caught) {
       if (caught instanceof TypeError) {
-        await enqueuePending(shouldPrint)
+        try { await enqueuePending(shouldPrint) } catch (error) { setConnectionError(error instanceof Error ? error.message : 'No se pudo guardar en este navegador') }
         return
       }
       setConnectionError('No se pudo guardar la orden.')
@@ -223,7 +224,9 @@ export function OrderForm({ action, values: suppliedValues = {}, error, submitLa
   const fieldMessage = (name: OrderField) => fieldErrors[name] ? <small className="field-error" role="alert">{fieldErrors[name]}</small> : null
 
   return (
-    <form action={action} onSubmit={onSubmit} className="order-form" noValidate>
+    <form action={action ? async (formData) => {
+      try { await action(formData) } finally { await invalidateBrowserSnapshot().catch(() => {}) }
+    } : undefined} onSubmit={onSubmit} className="order-form" noValidate>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {connectionError ? <p className="form-error" role="alert">{connectionError}</p> : null}
       <fieldset>

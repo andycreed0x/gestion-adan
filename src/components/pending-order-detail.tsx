@@ -4,22 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 
 import { buildOrderTicketRows } from '@/lib/order-ticket'
 import { createBrowserOrderStore } from '@/lib/offline/order-store'
-import { syncPendingOrders } from '@/lib/offline/sync'
+import { syncBrowserPending } from '@/lib/offline/browser-runtime'
 import type { PendingCreate } from '@/lib/offline/types'
 
 import { OrderTicketFields, OrderTicketFooter, OrderTicketHeader } from './order-ticket-layout'
-
-async function postPendingOrder(pending: PendingCreate) {
-  const response = await fetch('/api/orders', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(pending.draft),
-  })
-  const body = await response.json().catch(() => ({}))
-  return response.ok
-    ? { ok: true as const, order: { id: body.id as string, orderNumber: body.order_number as number } }
-    : { ok: false as const, error: Object.values(body.fieldErrors ?? {})[0] || body.error || 'No se pudo sincronizar la orden' }
-}
 
 export function PendingOrderDetail({ localId, autoPrint = false }: { localId: string; autoPrint?: boolean }) {
   const [pending, setPending] = useState<PendingCreate | null>(null)
@@ -75,7 +63,7 @@ export function PendingOrderDetail({ localId, autoPrint = false }: { localId: st
       <div className="ticket-actions no-print">
         <button type="button" onClick={() => window.print()}>Imprimir orden</button>
         <button type="button" className="button secondary" onClick={async () => {
-          await syncPendingOrders(createBrowserOrderStore(), postPendingOrder)
+          await syncBrowserPending(true).catch((error) => setPending((item) => item ? { ...item, syncError: error.message } : null))
           await refresh()
         }}>Reintentar sincronización</button>
       </div>

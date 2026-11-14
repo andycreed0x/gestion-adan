@@ -1,4 +1,4 @@
-import { orderStatuses, type OrderStatus } from './orders'
+import { orderStatuses, type OrderStatus } from './order-values'
 
 export const ORDER_PAGE_SIZE = 25
 export const ARGENTINA_TIME_ZONE = 'America/Argentina/Buenos_Aires'
