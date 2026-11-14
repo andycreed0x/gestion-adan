@@ -188,15 +188,25 @@ Enter avanza al siguiente control y Shift+Enter inserta una nueva línea en los
 campos largos. Los errores se señalan en el mismo campo y Guardar queda
 deshabilitado hasta que la orden sea válida.
 
-Después de visitar la lista reciente con conexión, el navegador guarda las
-vistas paginadas, detalles e impresiones de esas órdenes. Si la red falla, se
-muestra `Sin conexión` sólo mientras se usa ese contenido guardado. Se pueden
-abrir e imprimir órdenes recientes cacheadas y crear nuevas órdenes locales.
-Una orden local dice `Pendiente de sincronización`, no muestra número oficial y
-se sincroniza automáticamente al recuperar la red. WhatsApp permanece
-deshabilitado para órdenes pendientes, sin teléfono o sin conexión. Al cerrar
-sesión se eliminan IndexedDB y Cache Storage para que esos datos no estén
-disponibles al siguiente usuario del navegador.
+Después de visitar el listado con conexión, el navegador descarga un snapshot
+privado de los últimos 30 días argentinos y prepara un único shell público.
+Esperá **Órdenes recientes disponibles sin conexión** antes de desconectar.
+No se precargan páginas de detalle ni tickets: se generan desde IndexedDB,
+incluso para órdenes nunca visitadas individualmente. El conjunto se revisa al
+entrar, enfocar o reconectar, con vigencia de 120 segundos y sin polling.
+
+Sin conexión se puede consultar, filtrar, paginar e imprimir ese conjunto y crear
+órdenes pendientes sin número oficial. No se permite editar o eliminar órdenes
+existentes ni descargar adjuntos. WhatsApp requiere conexión y una orden
+persistida con teléfono. Los errores de aplicación requieren reintento explícito;
+una falla de red detiene la sincronización sin borrar pendientes.
+
+Salir cancela los trabajos y espera la limpieza privada antes de navegar. Las
+pestañas coordinan descargas y envíos con Web Locks. Las colas heredadas sin
+propietario verificable se conservan en cuarentena para recuperación explícita,
+nunca se asignan a otra cuenta. Una sesión vencida necesita renovación online.
+Ver [operación y recuperación](docs/offline-operacion.md) y
+[pruebas sintéticas y rendimiento](docs/offline-testing.md).
 
 #### Aceptación manual en navegador
 
@@ -212,9 +222,9 @@ disponibles al siguiente usuario del navegador.
    los últimos 30 días argentinos. Aplicá un rango anterior a esa ventana y
    recorré Anterior/Siguiente: debe conservarse el filtro y poderse ver el
    historial.
-4. Esperá a que cargue el listado reciente y sus páginas. En DevTools activá
-   Network > Offline, recargá `/orders` y recorré las páginas cacheadas. Abrí
-   una orden reciente: debe aparecer `Sin conexión`; abrí Imprimir ticket y
+4. Esperá el aviso de preparación offline completa. En DevTools activá
+   Network > Offline, recargá `/orders` y recorré las páginas del snapshot. Abrí
+   una orden reciente nunca visitada: debe aparecer `Modo offline`; abrí Imprimir ticket y
    verificá que el diálogo de impresión sigue disponible.
 5. Aún offline, creá una orden válida. Confirmá el aviso
    `Pendiente de sincronización`, imprimila sin número oficial y verificá que

@@ -1,6 +1,7 @@
 'use client'
 
-import { formatCurrency, orderStatusLabels, type OrderStatus } from '@/lib/orders'
+import { invalidateBrowserSnapshot } from '@/lib/offline/browser-runtime'
+import { formatCurrency, orderStatusLabels, type OrderStatus } from '@/lib/order-values'
 
 export type PersistedOrderRow = {
   persistence?: 'persisted'
@@ -47,7 +48,11 @@ export function OrderTable({ orders, deleteAction }: OrderTableProps) {
               <td><span className={`status status-${order.status}`}>{order.persistence === 'pending' ? 'Pendiente' : orderStatusLabels[order.status as OrderStatus]}</span></td>
               <td>{formatCurrency(order.budget_cents)}</td>
               <td>{order.received_on}</td>
-              <td>{order.persistence === 'pending' || !deleteAction ? null : <form action={deleteAction} onSubmit={(event) => {
+              <td>{order.persistence === 'pending' || !deleteAction ? null : <form action={async (formData) => {
+                await deleteAction(formData)
+                await invalidateBrowserSnapshot().catch(() => {})
+              }} onSubmit={(event) => {
+                if (!navigator.onLine) { event.preventDefault(); return }
                 if (!window.confirm(`¿Borrar definitivamente la orden #${order.order_number}?`)) event.preventDefault()
               }}><input type="hidden" name="orderId" value={order.id} /><button type="submit" className="button-danger" aria-label={`Borrar orden #${order.order_number}`}>Borrar</button></form>}</td>
             </tr>

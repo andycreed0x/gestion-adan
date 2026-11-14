@@ -1,0 +1,26 @@
+# Deploy only the web application, never local configuration or test artifacts.
+.git
+.worktrees
+.superpowers
+.agents
+.claude
+.pi
+.vercel
+.env*
+node_modules
+.next
+coverage
+backups
+secrets
+**/.venv
+**/__pycache__
+**/.pytest_cache
+*.log
+*.tsbuildinfo
+apps/desktop
+docs
+e2e
+scripts
+src/**/*.test.ts
+vitest.config.ts
+playwright.config.ts
